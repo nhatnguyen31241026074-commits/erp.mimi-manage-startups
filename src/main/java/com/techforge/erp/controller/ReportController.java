@@ -1,6 +1,9 @@
 package com.techforge.erp.controller;
 
-curl -X GET "http://localhost:8080/api/v1/reports/monthly?month=12&year=2025" -H "Accept: application/json"import com.techforge.erp.service.ReportService;
+import com.techforge.erp.model.MonthlyReport;
+import com.techforge.erp.model.ProgressReport;
+import com.techforge.erp.model.ProjectReport;
+import com.techforge.erp.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,24 +22,24 @@ public class ReportController {
     }
 
     @GetMapping("/project/{id}")
-    public CompletableFuture<ResponseEntity<Object>> getProjectReport(@PathVariable("id") String projectId) {
+    public CompletableFuture<ResponseEntity<ProjectReport>> getProjectReport(@PathVariable("id") String projectId) {
         return reportService.generateProjectReport(projectId)
-                .<ResponseEntity<Object>>thenApply(r -> ResponseEntity.ok(r))
-                .exceptionally(ex -> ResponseEntity.status(500).body("Error generating project report: " + ex.getMessage()));
+                .<ResponseEntity<ProjectReport>>thenApply(r -> ResponseEntity.ok(r))
+                .exceptionally(ex -> ResponseEntity.status(500).body(null));
     }
 
     @GetMapping("/monthly")
-    public CompletableFuture<ResponseEntity<Object>> getMonthlyReport(@RequestParam("month") int month,
+    public CompletableFuture<ResponseEntity<MonthlyReport>> getMonthlyReport(@RequestParam("month") int month,
                                                                       @RequestParam("year") int year) {
         return reportService.generateMonthlyReport(month, year)
-                .<ResponseEntity<Object>>thenApply(r -> ResponseEntity.ok(r))
-                .exceptionally(ex -> ResponseEntity.status(500).body("Error generating monthly report: " + ex.getMessage()));
+                .<ResponseEntity<MonthlyReport>>thenApply(r -> ResponseEntity.ok(r))
+                .exceptionally(ex -> ResponseEntity.status(500).body(null));
     }
 
     @GetMapping("/project/{id}/progress")
-    public CompletableFuture<ResponseEntity<Object>> getProjectProgress(@PathVariable("id") String projectId) {
+    public CompletableFuture<ResponseEntity<ProgressReport>> getProjectProgress(@PathVariable("id") String projectId) {
         return reportService.getProjectProgress(projectId)
-                .<ResponseEntity<Object>>thenApply(r -> ResponseEntity.ok(r))
-                .exceptionally(ex -> ResponseEntity.status(500).body("Error generating progress report: " + ex.getMessage()));
+                .<ResponseEntity<ProgressReport>>thenApply(r -> ResponseEntity.ok(r))
+                .exceptionally(ex -> ResponseEntity.status(500).body(null));
     }
 }

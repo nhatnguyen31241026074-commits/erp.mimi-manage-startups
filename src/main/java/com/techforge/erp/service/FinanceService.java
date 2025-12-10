@@ -7,6 +7,8 @@ import com.techforge.erp.model.Invoice;
 import com.techforge.erp.model.Payroll;
 import com.techforge.erp.model.User;
 import com.techforge.erp.model.WorkLog;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class FinanceService {
+
+    private static final Logger logger = LoggerFactory.getLogger(FinanceService.class);
 
     private final DatabaseReference payrollsRef;
     private final DatabaseReference invoicesRef;
@@ -34,25 +38,30 @@ public class FinanceService {
         this.workLogService = workLogService;
     }
 
+    /**
+     * Calculate payroll for a given user/month/year, save to LTUD10/payrolls and return the created Payroll.
+     */
     public CompletableFuture<Payroll> calculatePayroll(String userId, int month, int year) {
         CompletableFuture<Payroll> future = new CompletableFuture<>();
 
         try {
             // fetch all worklogs then filter by userId and month/year
             workLogService.getAllWorkLogs().thenCompose(all -> {
-                List<WorkLog> filtered = all.stream().filter(w -> {
-                    if (w == null || w.getUserId() == null) return false;
-                    if (!w.getUserId().equals(userId)) return false;
-                    if (w.getWorkDate() == null) return false;
-                    Calendar c = Calendar.getInstance();
-                    c.setTime(w.getWorkDate());
-                    int wm = c.get(Calendar.MONTH) + 1;
-                    int wy = c.get(Calendar.YEAR);
-                    return wm == month && wy == year;
-                }).collect(Collectors.toList());
+                List<WorkLog> filtered = (all == null) ? Collections.emptyList() :
+                        all.stream().filter(w -> {
+                            if (w == null || w.getUserId() == null) return false;
+                            if (!w.getUserId().equals(userId)) return false;
+                            if (w.getWorkDate() == null) return false;
+                            Calendar c = Calendar.getInstance();
+                            c.setTime(w.getWorkDate());
+                            int wm = c.get(Calendar.MONTH) + 1; // Calendar.MONTH is 0-based
+                            int wy = c.get(Calendar.YEAR);
+                            return wm == month && wy == year;
+                        }).collect(Collectors.toList());
 
                 // fetch user once
-                return userService.getUserById(userId).thenApply(user -> new AbstractMap.SimpleEntry<>(user, filtered));
+                return userService.getUserById(userId)
+                        .thenApply(user -> new AbstractMap.SimpleEntry<>(user, filtered));
             }).thenAccept(pair -> {
                 User user = pair.getKey();
                 List<WorkLog> logs = pair.getValue();
@@ -61,6 +70,8 @@ public class FinanceService {
                 double totalOvertime = 0.0;
 
                 for (WorkLog wl : logs) {
+                    if (wl == null) continue;
+
                     double regularHours = wl.getRegularHours() == null ? 0.0 : wl.getRegularHours();
                     double overtimeHours = wl.getOvertimeHours() == null ? 0.0 : wl.getOvertimeHours();
 
@@ -103,13 +114,24 @@ public class FinanceService {
                 payroll.setPaid(false);
                 payroll.setTransactionId(null);
 
-                payrollsRef.child(key).setValueAsync(payroll).addListener(() -> future.complete(payroll), Runnable::run);
+                // Write to Firebase Realtime Database asynchronously.
+                try {
+                    payrollsRef.child(key).setValueAsync(payroll).addListener(() -> {
+                        logger.info("Payroll saved (user={}, month={}, year={}, id={})", userId, month, year, key);
+                        future.complete(payroll);
+                    }, Runnable::run);
+                } catch (Exception e) {
+                    logger.error("Failed to save payroll to Firebase", e);
+                    future.completeExceptionally(e);
+                }
 
             }).exceptionally(ex -> {
+                logger.error("Error during payroll calculation composite operations", ex);
                 future.completeExceptionally(ex);
                 return null;
             });
         } catch (Exception e) {
+            logger.error("Unexpected error in calculatePayroll:", e);
             future.completeExceptionally(e);
         }
 
@@ -119,14 +141,23 @@ public class FinanceService {
     public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
         CompletableFuture<Invoice> future = new CompletableFuture<>();
         try {
+            if (invoice == null) {
+                future.completeExceptionally(new IllegalArgumentException("Invoice cannot be null"));
+                return future;
+            }
+
             String key = (invoice.getId() != null && !invoice.getId().isEmpty()) ? invoice.getId() : invoicesRef.push().getKey();
             if (key == null) {
                 future.completeExceptionally(new IllegalStateException("Unable to generate key for invoice"));
                 return future;
             }
             invoice.setId(key);
-            invoicesRef.child(key).setValueAsync(invoice).addListener(() -> future.complete(invoice), Runnable::run);
+            invoicesRef.child(key).setValueAsync(invoice).addListener(() -> {
+                logger.info("Invoice saved id={}", key);
+                future.complete(invoice);
+            }, Runnable::run);
         } catch (Exception e) {
+            logger.error("Error creating invoice", e);
             future.completeExceptionally(e);
         }
         return future;
@@ -135,14 +166,23 @@ public class FinanceService {
     public CompletableFuture<Expense> createExpense(Expense expense) {
         CompletableFuture<Expense> future = new CompletableFuture<>();
         try {
+            if (expense == null) {
+                future.completeExceptionally(new IllegalArgumentException("Expense cannot be null"));
+                return future;
+            }
+
             String key = (expense.getId() != null && !expense.getId().isEmpty()) ? expense.getId() : expensesRef.push().getKey();
             if (key == null) {
                 future.completeExceptionally(new IllegalStateException("Unable to generate key for expense"));
                 return future;
             }
             expense.setId(key);
-            expensesRef.child(key).setValueAsync(expense).addListener(() -> future.complete(expense), Runnable::run);
+            expensesRef.child(key).setValueAsync(expense).addListener(() -> {
+                logger.info("Expense saved id={}", key);
+                future.complete(expense);
+            }, Runnable::run);
         } catch (Exception e) {
+            logger.error("Error creating expense", e);
             future.completeExceptionally(e);
         }
         return future;
