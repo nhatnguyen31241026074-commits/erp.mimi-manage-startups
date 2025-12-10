@@ -62,6 +62,31 @@ public class UserService {
         return future;
     }
 
+    public CompletableFuture<User> getUserById(String id) {
+        CompletableFuture<User> future = new CompletableFuture<>();
+        try {
+            usersRef.child(id).addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+                    if (snapshot.exists()) {
+                        User u = snapshot.getValue(User.class);
+                        future.complete(u);
+                    } else {
+                        future.complete(null);
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {
+                    future.completeExceptionally(new RuntimeException("Firebase cancelled: " + error.getMessage()));
+                }
+            });
+        } catch (Exception e) {
+            future.completeExceptionally(e);
+        }
+        return future;
+    }
+
     public CompletableFuture<List<User>> getAllUsers() {
         CompletableFuture<List<User>> future = new CompletableFuture<>();
         try {
@@ -89,4 +114,3 @@ public class UserService {
         return future;
     }
 }
-
