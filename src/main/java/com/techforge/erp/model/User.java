@@ -20,8 +20,17 @@ public class User {
 
     // Salary fields (allowing nulls so we use Double wrappers)
     private Double baseSalary;
-    private Double hourlyRateOT;
     private String salaryType; // e.g., "monthly", "hourly"
+    private Double hourlyRateOT;
 
     private Date createdAt;
+
+    // Helper: check if user has one of the provided roles (case-insensitive)
+    public boolean hasRole(String... roles) {
+        if (this.role == null || roles == null || roles.length == 0) return false;
+        for (String r : roles) {
+            if (r != null && r.equalsIgnoreCase(this.role)) return true;
+        }
+        return false;
+    }
 }
