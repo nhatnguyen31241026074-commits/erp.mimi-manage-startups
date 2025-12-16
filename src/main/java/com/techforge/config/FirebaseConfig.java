@@ -86,10 +86,10 @@ public class FirebaseConfig {
                     public void onDataChange(DataSnapshot snapshot) {
                         Boolean connected = snapshot.getValue(Boolean.class);
                         if (Boolean.TRUE.equals(connected)) {
-                            logger.info("✅ Firebase connection test PASSED - Database is reachable!");
+                            logger.info("Firebase connection test PASSED - Database is reachable!");
                             success[0] = true;
                         } else {
-                            logger.warn("⚠️ Firebase connection test: Database not yet connected (this may be normal on startup)");
+                            logger.warn("Firebase connection test: Database not yet connected (this may be normal on startup)");
                             success[0] = true; // Still consider it a success - connection is being established
                         }
                         latch.countDown();
@@ -98,7 +98,7 @@ public class FirebaseConfig {
                     @Override
                     public void onCancelled(DatabaseError error) {
                         errorMessage[0] = error.getMessage();
-                        logger.error("❌ Firebase connection test FAILED: {}", error.getMessage());
+                        logger.error("Firebase connection test FAILED: {}", error.getMessage());
                         latch.countDown();
                     }
                 });
@@ -107,13 +107,13 @@ public class FirebaseConfig {
             boolean completed = latch.await(10, TimeUnit.SECONDS);
 
             if (!completed) {
-                logger.error("❌ Firebase connection test TIMED OUT after 10 seconds!");
+                logger.error("Firebase connection test TIMED OUT after 10 seconds!");
                 logger.error("   Possible causes:");
                 logger.error("   1. Incorrect database URL: {}", databaseUrl);
                 logger.error("   2. Network/firewall blocking connection");
                 logger.error("   3. Service account doesn't have database access");
             } else if (errorMessage[0] != null) {
-                logger.error("❌ Firebase error: {}", errorMessage[0]);
+                logger.error("Firebase error: {}", errorMessage[0]);
             }
 
         } catch (InterruptedException e) {
