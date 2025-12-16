@@ -18,7 +18,14 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(roleInterceptor)
-                .addPathPatterns("/api/v1/**");
+                .addPathPatterns("/api/v1/**") // Áp dụng cho toàn bộ API
+                // Loại trừ các API không cần check quyền
+                .excludePathPatterns(
+                        "/api/v1/auth/**",      // Ví dụ: Login, Register, Refresh Token
+                        "/api/v1/public/**",    // Các API public khác (nếu có)
+                        "/swagger-ui/**",       // Swagger UI
+                        "/v3/api-docs/**",      // OpenAPI docs
+                        "/error"                // Spring error endpoint
+                );
     }
 }
-

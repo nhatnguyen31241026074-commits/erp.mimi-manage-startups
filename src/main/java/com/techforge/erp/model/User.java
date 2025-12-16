@@ -22,8 +22,8 @@ public class User {
     private Double baseSalary;
     private String salaryType; // e.g., "monthly", "hourly"
     private Double hourlyRateOT;
+    private String CreatedAt;
 
-    private Date createdAt;
 
     // Helper: check if user has one of the provided roles (case-insensitive)
     public boolean hasRole(String... roles) {

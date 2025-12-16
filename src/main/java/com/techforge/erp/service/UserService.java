@@ -2,6 +2,8 @@ package com.techforge.erp.service;
 
 import com.google.firebase.database.*;
 import com.techforge.erp.model.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -11,11 +13,13 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class UserService {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private final DatabaseReference usersRef;
 
     public UserService() {
         DatabaseReference root = FirebaseDatabase.getInstance().getReference("LTUD10");
         this.usersRef = root.child("users");
+        logger.info("UserService initialized with Firebase path: LTUD10/users");
     }
 
     public CompletableFuture<User> createUser(User user) {
@@ -64,24 +68,35 @@ public class UserService {
 
     public CompletableFuture<User> getUserById(String id) {
         CompletableFuture<User> future = new CompletableFuture<>();
+
+        logger.info("Starting Firebase fetch for userId={}", id);
+
         try {
             usersRef.child(id).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot snapshot) {
+                    logger.info("Firebase returned data for userId={}, exists={}", id, snapshot.exists());
                     if (snapshot.exists()) {
                         User u = snapshot.getValue(User.class);
+                        if (u != null) {
+                            u.setId(id); // Ensure ID is set
+                        }
+                        logger.info("Firebase returned user: id={}, role={}", id, u != null ? u.getRole() : "null");
                         future.complete(u);
                     } else {
+                        logger.warn("Firebase: No user found with id={}", id);
                         future.complete(null);
                     }
                 }
 
                 @Override
                 public void onCancelled(DatabaseError error) {
+                    logger.error("Firebase error for userId={}: {}", id, error.getMessage());
                     future.completeExceptionally(new RuntimeException("Firebase cancelled: " + error.getMessage()));
                 }
             });
         } catch (Exception e) {
+            logger.error("Exception during Firebase fetch for userId={}: {}", id, e.getMessage(), e);
             future.completeExceptionally(e);
         }
         return future;

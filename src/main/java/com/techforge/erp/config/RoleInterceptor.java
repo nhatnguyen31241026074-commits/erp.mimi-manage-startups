@@ -13,6 +13,10 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 /**
  * RoleInterceptor enforces RBAC for API endpoints using the X-Requester-ID header.
  * Uses ResponseStatusException for proper HTTP status codes.
@@ -20,6 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class RoleInterceptor implements HandlerInterceptor {
     private static final Logger logger = LoggerFactory.getLogger(RoleInterceptor.class);
+    private static final int FIREBASE_TIMEOUT_SECONDS = 5;
 
     private final UserService userService;
 
@@ -41,11 +46,25 @@ public class RoleInterceptor implements HandlerInterceptor {
 
         User user;
         try {
-            // Blocking fetch as requested. Consider caching in production.
-            user = userService.getUserById(requesterId).join();
-        } catch (Exception e) {
-            logger.warn("Error fetching user {}", requesterId, e);
+            logger.info("Fetching user from Firebase: userId={}", requesterId);
+
+            // Add timeout to prevent indefinite blocking
+            user = userService.getUserById(requesterId)
+                    .orTimeout(FIREBASE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .join();
+
+            logger.info("Firebase fetch completed: userId={}, found={}", requesterId, user != null);
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof TimeoutException) {
+                logger.error("Firebase timeout after {}s for userId={}", FIREBASE_TIMEOUT_SECONDS, requesterId);
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Database timeout - please try again");
+            }
+            logger.warn("Error fetching user {}: {}", requesterId, e.getMessage());
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
+        } catch (Exception e) {
+            logger.warn("Unexpected error fetching user {}: {}", requesterId, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error during authentication");
         }
 
         if (user == null) {
