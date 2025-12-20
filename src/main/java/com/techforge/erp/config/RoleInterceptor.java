@@ -110,6 +110,29 @@ public class RoleInterceptor implements HandlerInterceptor {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
         }
 
+        // /api/v1/tasks/** -> GET allowed to authenticated users; POST/PUT/PATCH for MANAGER, EMPLOYEE, ADMIN
+        if (path.startsWith("/api/v1/tasks")) {
+            if ("GET".equalsIgnoreCase(method)) {
+                // All authenticated users can read tasks
+                return true;
+            }
+            if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method)) {
+                // MANAGER, EMPLOYEE, ADMIN can create/update tasks (for Kanban drag-and-drop)
+                if (user.hasRole("ADMIN", "MANAGER", "EMPLOYEE")) return true;
+            }
+            if ("DELETE".equalsIgnoreCase(method)) {
+                // Only ADMIN and MANAGER can delete tasks
+                if (user.hasRole("ADMIN", "MANAGER")) return true;
+            }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+        }
+
+        // /api/v1/worklogs/** -> MANAGER, EMPLOYEE, ADMIN can create/read
+        if (path.startsWith("/api/v1/worklogs")) {
+            if (user.hasRole("ADMIN", "MANAGER", "EMPLOYEE")) return true;
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+        }
+
         // Default: for any /api/v1/** path not covered above, deny
         if (path.startsWith("/api/v1/")) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");

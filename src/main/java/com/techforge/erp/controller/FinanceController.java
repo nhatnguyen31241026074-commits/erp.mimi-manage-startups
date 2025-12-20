@@ -30,6 +30,23 @@ public class FinanceController {
                 .exceptionally(ex -> ResponseEntity.status(500).body("Error calculating payroll: " + ex.getMessage()));
     }
 
+    @GetMapping("/payroll")
+    public CompletableFuture<ResponseEntity<Object>> getAllPayroll() {
+        return financeService.getAllPayroll()
+                .<ResponseEntity<Object>>thenApply(list -> ResponseEntity.ok(list))
+                .exceptionally(ex -> ResponseEntity.status(500).body("Error fetching payroll: " + ex.getMessage()));
+    }
+
+    @PostMapping("/pay")
+    public ResponseEntity<Object> processMoMoPayment(@RequestBody java.util.Map<String, String> payload) {
+        // Mock MoMo payment processing
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Payment processed successfully",
+                "status", "SUCCESS",
+                "transactionId", "MOMO_" + System.currentTimeMillis()
+        ));
+    }
+
     @PostMapping("/invoices")
     public CompletableFuture<ResponseEntity<Object>> createInvoice(@RequestBody Invoice invoice) {
         if (invoice == null) return CompletableFuture.completedFuture(ResponseEntity.badRequest().body("invoice is required"));

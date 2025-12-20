@@ -178,4 +178,92 @@ public class ReportService {
     private double round(double v) {
         return Math.round(v * 100.0) / 100.0;
     }
+
+    /**
+     * Gets recent activities for a project by querying WorkLogs and Tasks.
+     * Returns strings like:
+     * - "🕒 [Date] Goku logged 4.5h on 'API Logic'"
+     * - "✅ [Date] Vegeta moved 'Frontend UI' to DONE"
+     *
+     * @param projectId The project ID to get activities for (nullable for all projects)
+     * @return CompletableFuture containing list of activity strings
+     */
+    public CompletableFuture<List<Map<String, Object>>> getRecentActivities(String projectId) {
+        CompletableFuture<List<WorkLog>> worklogsF = workLogService.getAllWorkLogs();
+        CompletableFuture<List<Task>> tasksF = taskService.getAllTasks();
+
+        return CompletableFuture.allOf(worklogsF, tasksF).thenApply(v -> {
+            List<WorkLog> allWorklogs = worklogsF.join();
+            List<Task> allTasks = tasksF.join();
+
+            // Filter by projectId if provided
+            List<WorkLog> worklogs = projectId != null
+                ? allWorklogs.stream().filter(w -> projectId.equals(w.getProjectId())).collect(Collectors.toList())
+                : allWorklogs;
+
+            List<Task> tasks = projectId != null
+                ? allTasks.stream().filter(t -> projectId.equals(t.getProjectId())).collect(Collectors.toList())
+                : allTasks;
+
+            List<Map<String, Object>> activities = new ArrayList<>();
+
+            // Build task title map
+            Map<String, String> taskTitles = tasks.stream()
+                .collect(Collectors.toMap(Task::getId, Task::getTitle, (a, b) -> a));
+
+            // Add work log activities (sorted by date desc)
+            worklogs.stream()
+                .sorted((a, b) -> {
+                    if (a.getWorkDate() == null) return 1;
+                    if (b.getWorkDate() == null) return -1;
+                    return b.getWorkDate().compareTo(a.getWorkDate());
+                })
+                .limit(10)
+                .forEach(log -> {
+                    Map<String, Object> activity = new HashMap<>();
+                    activity.put("type", "WORK_LOG");
+                    activity.put("userId", log.getUserId());
+                    activity.put("taskId", log.getTaskId());
+                    activity.put("taskTitle", taskTitles.getOrDefault(log.getTaskId(), "Task"));
+                    activity.put("hours", log.getHours() != null ? log.getHours() : 0.0);
+                    activity.put("regularHours", log.getRegularHours() != null ? log.getRegularHours() : 0.0);
+                    activity.put("overtimeHours", log.getOvertimeHours() != null ? log.getOvertimeHours() : 0.0);
+                    activity.put("date", log.getWorkDate());
+
+                    // Build description
+                    String desc = String.format("logged %.1fh on '%s'",
+                        log.getHours() != null ? log.getHours() : 0.0,
+                        taskTitles.getOrDefault(log.getTaskId(), "Task"));
+                    activity.put("description", desc);
+                    activity.put("icon", "🕒");
+
+                    activities.add(activity);
+                });
+
+            // Add task status change activities (assume tasks sorted by update time)
+            tasks.stream()
+                .filter(t -> "DONE".equalsIgnoreCase(t.getStatus()) || "COMPLETED".equalsIgnoreCase(t.getStatus()))
+                .limit(5)
+                .forEach(task -> {
+                    Map<String, Object> activity = new HashMap<>();
+                    activity.put("type", "TASK_COMPLETED");
+                    activity.put("userId", task.getAssignedUserId());
+                    activity.put("taskId", task.getId());
+                    activity.put("taskTitle", task.getTitle());
+                    activity.put("status", task.getStatus());
+
+                    // Build description
+                    String desc = String.format("moved '%s' to DONE", task.getTitle());
+                    activity.put("description", desc);
+                    activity.put("icon", "✅");
+
+                    activities.add(activity);
+                });
+
+            // Sort all activities and limit to 10
+            return activities.stream()
+                .limit(10)
+                .collect(Collectors.toList());
+        });
+    }
 }

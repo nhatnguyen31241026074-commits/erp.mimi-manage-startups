@@ -11,6 +11,7 @@ public class Task {
     private String id;
     private String projectId;
     private String assignedUserId;
+    private String assigneeEmail; // Email of the assigned user for easy filtering
     private String title;
     private String description;
     private String priority; // e.g., LOW, MEDIUM, HIGH

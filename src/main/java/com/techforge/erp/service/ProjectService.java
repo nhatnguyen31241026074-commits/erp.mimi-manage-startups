@@ -12,10 +12,12 @@ import java.util.concurrent.CompletableFuture;
 public class ProjectService {
 
     private final DatabaseReference projectsRef;
+    private final DatabaseReference tasksRef;
 
     public ProjectService() {
         DatabaseReference root = FirebaseDatabase.getInstance().getReference("LTUD10");
         this.projectsRef = root.child("projects");
+        this.tasksRef = root.child("tasks");
     }
 
     public CompletableFuture<Project> createProject(Project project) {
@@ -100,10 +102,50 @@ public class ProjectService {
         return future;
     }
 
+    /**
+     * Delete a project and all its associated tasks (Cascade Delete).
+     * This prevents ConstraintViolationException by removing dependent tasks first.
+     */
     public CompletableFuture<Void> deleteProject(String id) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            projectsRef.child(id).removeValueAsync().addListener(() -> future.complete(null), Runnable::run);
+            // Step 1: Find and delete all tasks associated with this project
+            tasksRef.orderByChild("projectId").equalTo(id)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot snapshot) {
+                            // Collect all task deletion futures
+                            List<CompletableFuture<Void>> deletionFutures = new ArrayList<>();
+
+                            if (snapshot.exists()) {
+                                for (DataSnapshot taskSnapshot : snapshot.getChildren()) {
+                                    String taskId = taskSnapshot.getKey();
+                                    if (taskId != null) {
+                                        CompletableFuture<Void> taskFuture = new CompletableFuture<>();
+                                        tasksRef.child(taskId).removeValueAsync()
+                                                .addListener(() -> taskFuture.complete(null), Runnable::run);
+                                        deletionFutures.add(taskFuture);
+                                    }
+                                }
+                            }
+
+                            // Step 2: After all tasks are deleted, delete the project
+                            CompletableFuture.allOf(deletionFutures.toArray(new CompletableFuture[0]))
+                                    .thenRun(() -> {
+                                        projectsRef.child(id).removeValueAsync()
+                                                .addListener(() -> future.complete(null), Runnable::run);
+                                    })
+                                    .exceptionally(ex -> {
+                                        future.completeExceptionally(ex);
+                                        return null;
+                                    });
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError error) {
+                            future.completeExceptionally(new RuntimeException("Firebase cancelled: " + error.getMessage()));
+                        }
+                    });
         } catch (Exception e) {
             future.completeExceptionally(e);
         }

@@ -84,7 +84,7 @@ public class MomoService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
             ResponseEntity<String> response = restTemplate.postForEntity(momoEndpoint, request, String.class);
-            result.put("statusCode", response.getStatusCodeValue());
+            result.put("statusCode", response.getStatusCode().value());
             if (response.getBody() != null) {
                 Map<?, ?> bodyMap = objectMapper.readValue(response.getBody(), Map.class);
                 result.put("body", bodyMap);
