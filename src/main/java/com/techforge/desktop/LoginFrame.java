@@ -205,20 +205,28 @@ public class LoginFrame extends JFrame {
             @Override
             public void mouseEntered(MouseEvent e) {
                 termsLink.setForeground(AppTheme.PRIMARY);
-                termsLink.setText("<html><u>Terms & Privacy Policy</u></html>");
+                // Underline using font attributes to avoid changing label text width
+                Font f = termsLink.getFont();
+                java.util.Map<java.awt.font.TextAttribute, ?> attr = f.getAttributes();
+                java.util.Map<java.awt.font.TextAttribute, Object> newAttr = new java.util.HashMap<>(attr);
+                newAttr.put(java.awt.font.TextAttribute.UNDERLINE, java.awt.font.TextAttribute.UNDERLINE_ON);
+                termsLink.setFont(new Font(newAttr));
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
                 termsLink.setForeground(AppTheme.TEXT_LIGHT);
-                termsLink.setText("Terms & Privacy Policy");
+                termsLink.setFont(AppTheme.fontMain(Font.PLAIN, 11));
             }
         });
         card.add(termsLink);
         card.add(Box.createVerticalStrut(15));
 
         // Footer - Demo credentials
-        JPanel footerPanel = createFooterPanel();
+        // Remove demo credentials for production-like login screen
+        JPanel footerPanel = new JPanel();
+        footerPanel.setOpaque(false);
+        footerPanel.setPreferredSize(new Dimension(320, 10));
         card.add(footerPanel);
 
         return card;
@@ -226,17 +234,27 @@ public class LoginFrame extends JFrame {
 
     private JPanel createFieldPanel(String labelText, boolean isPassword) {
         JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setLayout(new GridBagLayout()); // use GridBagLayout to align left
         panel.setOpaque(false);
-        panel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.setMaximumSize(new Dimension(340, 80));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.WEST;           // align to left
+        gbc.fill = GridBagConstraints.HORIZONTAL;       // field expands horizontally
+        gbc.insets = new Insets(12, 0, 6, 0);           // spacing: top/bottom
 
         JLabel label = new JLabel(labelText);
         label.setFont(AppTheme.fontMain(Font.BOLD, 13));
         label.setForeground(AppTheme.TEXT_MAIN);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(label);
-        panel.add(Box.createVerticalStrut(8));
+        // Requirement: label preferred size 320x20
+        label.setPreferredSize(new Dimension(320, 20));
+        panel.add(label, gbc);
+
+        gbc.gridy = 1; // place field on next row
+        gbc.weightx = 1.0; // allow horizontal expansion for the field
 
         JTextField field;
         if (isPassword) {
@@ -247,21 +265,25 @@ public class LoginFrame extends JFrame {
             field = usernameField;
         }
 
+        // Requirement: field preferred and minimum size 320x45
+        Dimension fieldDim = new Dimension(320, 45);
+        field.setPreferredSize(fieldDim);
+        field.setMinimumSize(fieldDim);
+        field.setMaximumSize(fieldDim);
+
         field.setFont(AppTheme.fontMain(Font.PLAIN, 14));
-        field.setPreferredSize(new Dimension(320, 45));
-        field.setMaximumSize(new Dimension(320, 45));
         field.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(AppTheme.BORDER, 2, true),
-                BorderFactory.createEmptyBorder(5, 15, 5, 15)
+                BorderFactory.createEmptyBorder(8, 14, 8, 14)
         ));
-        field.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // Keep existing listeners (focus/enter)
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
                 field.setBorder(BorderFactory.createCompoundBorder(
                         new LineBorder(AppTheme.PRIMARY, 2, true),
-                        BorderFactory.createEmptyBorder(5, 15, 5, 15)
+                        BorderFactory.createEmptyBorder(6, 14, 6, 14)
                 ));
             }
 
@@ -269,7 +291,7 @@ public class LoginFrame extends JFrame {
             public void focusLost(FocusEvent e) {
                 field.setBorder(BorderFactory.createCompoundBorder(
                         new LineBorder(AppTheme.BORDER, 2, true),
-                        BorderFactory.createEmptyBorder(5, 15, 5, 15)
+                        BorderFactory.createEmptyBorder(8, 14, 8, 14)
                 ));
             }
         });
@@ -283,7 +305,7 @@ public class LoginFrame extends JFrame {
             }
         });
 
-        panel.add(field);
+        panel.add(field, gbc);
         return panel;
     }
 

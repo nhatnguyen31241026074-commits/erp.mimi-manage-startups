@@ -170,7 +170,8 @@ public class MainDashboardFrame extends JFrame {
         // Configure visibility based on role
         configureNavButtonsForRole(userRole);
 
-        sidebarPanel.add(centerSection, BorderLayout.CENTER);
+        // Add the center section to NORTH so contents are pinned to the top of the sidebar
+        sidebarPanel.add(centerSection, BorderLayout.NORTH);
 
         // Bottom Section: User Profile (pinned to SOUTH)
         JPanel bottomSection = createUserProfileSection();
