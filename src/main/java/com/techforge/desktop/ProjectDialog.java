@@ -8,6 +8,13 @@ import java.awt.geom.RoundRectangle2D;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import com.google.gson.*;
+import java.net.HttpURLConnection;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.util.List;
+import java.util.ArrayList;
+
+import com.techforge.erp.model.Client;
 
 /**
  * ProjectDialog - Modern project creation dialog.
@@ -19,12 +26,14 @@ public class ProjectDialog extends JDialog {
 
     private final ApiClient apiClient;
     private final Runnable onProjectCreated;
+    // ApiClient is provided by caller; we'll use HttpURLConnection to call backend endpoints directly
+    // (keeps dependency minimal and satisfies HttpURLConnection requirement)
 
     // Form fields
     private JTextField projectNameField;
     private JTextField budgetField;
     private JTextField deadlineField;
-    private JTextField clientEmailField;
+    private JComboBox<Client> clientComboBox;
     private JTextField descriptionField;
     private JTextArea aiDescriptionArea;
     private JButton generateTasksBtn;
@@ -60,6 +69,9 @@ public class ProjectDialog extends JDialog {
 
         // FIX: Footer with buttons (SOUTH) - always visible
         add(createFooter(), BorderLayout.SOUTH);
+
+        // Load clients into combo box asynchronously
+        loadClients();
     }
 
     private JPanel createHeader() {
@@ -103,8 +115,22 @@ public class ProjectDialog extends JDialog {
         deadlineField.setText(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
         form.add(Box.createVerticalStrut(15));
 
-        // Client Email
-        form.add(createFormGroup("Client Email *", clientEmailField = createStyledTextField()));
+        // Client selection (ComboBox)
+        clientComboBox = new JComboBox<>();
+        clientComboBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Client) {
+                    Client c = (Client) value;
+                    setText(c.getName() != null ? c.getName() + " (" + (c.getEmail() != null ? c.getEmail() : "") + ")" : "Unnamed Client");
+                } else if (value == null) {
+                    setText("(No client)");
+                }
+                return this;
+            }
+        });
+        form.add(createComboFormGroup("Client *", clientComboBox));
         form.add(Box.createVerticalStrut(20));
 
         // AI Assistant Section
@@ -112,6 +138,28 @@ public class ProjectDialog extends JDialog {
         form.add(Box.createVerticalStrut(10));
 
         return form;
+    }
+
+    private JPanel createComboFormGroup(String labelText, JComboBox<Client> combo) {
+        JPanel group = new JPanel();
+        group.setLayout(new BoxLayout(group, BoxLayout.Y_AXIS));
+        group.setOpaque(false);
+        group.setAlignmentX(Component.LEFT_ALIGNMENT);
+        group.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+
+        JLabel label = new JLabel(labelText);
+        label.setFont(AppTheme.fontMain(Font.BOLD, 13));
+        label.setForeground(AppTheme.HEADER_BLUE);
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        group.add(label);
+        group.add(Box.createVerticalStrut(6));
+
+        combo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        combo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        combo.setPreferredSize(new Dimension(0, 42));
+        group.add(combo);
+
+        return group;
     }
 
     private JPanel createFormGroup(String labelText, JTextField field) {
@@ -219,7 +267,7 @@ public class ProjectDialog extends JDialog {
         section.add(Box.createVerticalStrut(10));
 
         // Generate Button
-        generateTasksBtn = createOutlineButton("✨ GENERATE TASKS");
+        generateTasksBtn = createOutlineButton(" GENERATE TASKS");
         generateTasksBtn.addActionListener(e -> generateAITasks());
         section.add(generateTasksBtn);
 
@@ -283,7 +331,8 @@ public class ProjectDialog extends JDialog {
         String name = projectNameField.getText().trim();
         String budgetStr = budgetField.getText().trim();
         String deadline = deadlineField.getText().trim();
-        String clientEmail = clientEmailField.getText().trim();
+        Client selectedClient = (Client) clientComboBox.getSelectedItem();
+        String clientId = selectedClient != null ? selectedClient.getId() : null;
 
         if (name.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Project name is required", "Validation Error", JOptionPane.WARNING_MESSAGE);
@@ -305,7 +354,7 @@ public class ProjectDialog extends JDialog {
         project.addProperty("budget", budget);
         project.addProperty("endDate", deadline);
         project.addProperty("startDate", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-        project.addProperty("clientId", clientEmail);
+        project.addProperty("clientId", clientId != null ? clientId : "");
         project.addProperty("status", "PLANNING");
 
         // Send to API
@@ -356,6 +405,188 @@ public class ProjectDialog extends JDialog {
                             "Error creating project: " + e.getMessage(),
                             "Error",
                             JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void loadClients() {
+        // Show loading placeholder
+        DefaultComboBoxModel<Client> loadingModel = new DefaultComboBoxModel<>();
+        loadingModel.addElement(new Client("-1", "Loading...", "", "", ""));
+        clientComboBox.setModel(loadingModel);
+        clientComboBox.setEnabled(false);
+
+        SwingWorker<List<Client>, Void> worker = new SwingWorker<>() {
+            @Override
+            protected List<Client> doInBackground() {
+                List<Client> clients = new ArrayList<>();
+
+                // Helper to parse a JSON string that may be array or firebase map
+                java.util.function.Consumer<String> parseResponse = (response) -> {
+                    if (response == null || response.isBlank()) return;
+                    try {
+                        JsonElement root = JsonParser.parseString(response);
+
+                        if (root.isJsonArray()) {
+                            JsonArray arr = root.getAsJsonArray();
+                            for (JsonElement el : arr) {
+                                if (el == null || !el.isJsonObject()) continue;
+                                JsonObject obj = el.getAsJsonObject();
+                                // Role check if present
+                                if (obj.has("role") && !obj.get("role").isJsonNull()) {
+                                    String role = obj.get("role").getAsString();
+                                    if (!"CLIENT".equalsIgnoreCase(role)) continue;
+                                }
+
+                                Client c = new Client();
+                                if (obj.has("fullName") && !obj.get("fullName").isJsonNull()) c.setName(obj.get("fullName").getAsString());
+                                else if (obj.has("name") && !obj.get("name").isJsonNull()) c.setName(obj.get("name").getAsString());
+                                else c.setName("(Unknown)");
+
+                                if (obj.has("email") && !obj.get("email").isJsonNull()) c.setEmail(obj.get("email").getAsString());
+                                if (obj.has("id") && !obj.get("id").isJsonNull()) c.setId(obj.get("id").getAsString());
+
+                                clients.add(c);
+                            }
+                        } else if (root.isJsonObject()) {
+                            JsonObject rootObj = root.getAsJsonObject();
+                            // wrapper { data: [...] }
+                            if (rootObj.has("data") && rootObj.get("data").isJsonArray()) {
+                                JsonArray arr = rootObj.getAsJsonArray("data");
+                                for (JsonElement el : arr) {
+                                    if (el == null || !el.isJsonObject()) continue;
+                                    JsonObject obj = el.getAsJsonObject();
+                                    if (obj.has("role") && !obj.get("role").isJsonNull()) {
+                                        String role = obj.get("role").getAsString();
+                                        if (!"CLIENT".equalsIgnoreCase(role)) continue;
+                                    }
+                                    Client c = new Client();
+                                    if (obj.has("fullName") && !obj.get("fullName").isJsonNull()) c.setName(obj.get("fullName").getAsString());
+                                    else if (obj.has("name") && !obj.get("name").isJsonNull()) c.setName(obj.get("name").getAsString());
+                                    else c.setName("(Unknown)");
+                                    if (obj.has("email") && !obj.get("email").isJsonNull()) c.setEmail(obj.get("email").getAsString());
+                                    if (obj.has("id") && !obj.get("id").isJsonNull()) c.setId(obj.get("id").getAsString());
+                                    clients.add(c);
+                                }
+                            } else {
+                                // Treat as Firebase map: keys are IDs
+                                for (String key : rootObj.keySet()) {
+                                    try {
+                                        JsonElement elem = rootObj.get(key);
+                                        if (elem == null || !elem.isJsonObject()) continue;
+                                        JsonObject obj = elem.getAsJsonObject();
+                                        // If role present and not CLIENT, skip
+                                        if (obj.has("role") && !obj.get("role").isJsonNull()) {
+                                            String role = obj.get("role").getAsString();
+                                            if (!"CLIENT".equalsIgnoreCase(role)) continue;
+                                        }
+                                        Client c = new Client();
+                                        if (obj.has("fullName") && !obj.get("fullName").isJsonNull()) c.setName(obj.get("fullName").getAsString());
+                                        else if (obj.has("name") && !obj.get("name").isJsonNull()) c.setName(obj.get("name").getAsString());
+                                        else c.setName("(Unknown)");
+                                        if (obj.has("email") && !obj.get("email").isJsonNull()) c.setEmail(obj.get("email").getAsString());
+                                        c.setId(key);
+                                        clients.add(c);
+                                    } catch (Exception ignore) {
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception ex) {
+                        System.err.println("Failed to parse clients response: " + ex.getMessage());
+                    }
+                };
+
+                // 1) Try the /clients endpoint via ApiClient (auth-aware)
+                String response = null;
+                try {
+                    response = apiClient.get("/clients");
+                    System.out.println("[ProjectDialog] /clients response length=" + (response == null ? 0 : response.length()));
+                    parseResponse.accept(response);
+                } catch (Exception ex) {
+                    System.err.println("apiClient.get(/clients) failed: " + ex.getMessage());
+                    // don't return yet - we'll try fallback to /users
+                }
+
+                // If /clients returned nothing, try /users and filter role=CLIENT
+                if (clients.isEmpty()) {
+                    try {
+                        String usersResp = apiClient.get("/users");
+                        System.out.println("[ProjectDialog] /users response length=" + (usersResp == null ? 0 : usersResp.length()));
+                        if (usersResp != null && !usersResp.isBlank()) {
+                            try {
+                                JsonElement root = JsonParser.parseString(usersResp);
+                                if (root.isJsonArray()) {
+                                    JsonArray arr = root.getAsJsonArray();
+                                    for (JsonElement el : arr) {
+                                        if (el == null || !el.isJsonObject()) continue;
+                                        JsonObject obj = el.getAsJsonObject();
+                                        if (obj.has("role") && !obj.get("role").isJsonNull()) {
+                                            String role = obj.get("role").getAsString();
+                                            if (!"CLIENT".equalsIgnoreCase(role)) continue;
+                                        } else {
+                                            continue;
+                                        }
+
+                                        Client c = new Client();
+                                        if (obj.has("fullName") && !obj.get("fullName").isJsonNull()) c.setName(obj.get("fullName").getAsString());
+                                        else if (obj.has("name") && !obj.get("name").isJsonNull()) c.setName(obj.get("name").getAsString());
+                                        else c.setName("(Unknown)");
+                                        if (obj.has("email") && !obj.get("email").isJsonNull()) c.setEmail(obj.get("email").getAsString());
+                                        if (obj.has("id") && !obj.get("id").isJsonNull()) c.setId(obj.get("id").getAsString());
+                                        clients.add(c);
+                                    }
+                                }
+                            } catch (Exception parseEx) {
+                                System.err.println("Failed to parse /users response: " + parseEx.getMessage());
+                            }
+                        }
+                    } catch (Exception ex) {
+                        System.err.println("apiClient.get(/users) failed: " + ex.getMessage());
+                    }
+                }
+
+                // Debug: print parsed clients in background thread
+                try {
+                    System.out.println("[ProjectDialog] Parsed clients count=" + clients.size());
+                    for (Client c : clients) {
+                        System.out.println("[ProjectDialog] CLIENT -> id=" + c.getId() + " name=" + c.getName() + " email=" + c.getEmail());
+                    }
+                } catch (Exception ignore) {}
+
+                return clients;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<Client> clients = get();
+
+                    // Debug: print clients before populating model (on EDT)
+                    System.out.println("[ProjectDialog] done() - clients size=" + (clients == null ? 0 : clients.size()));
+                    if (clients != null) {
+                        for (Client c : clients) System.out.println("[ProjectDialog] done() CLIENT -> id=" + c.getId() + " name=" + c.getName() + " email=" + c.getEmail());
+                    }
+
+                    DefaultComboBoxModel<Client> model = new DefaultComboBoxModel<>();
+                    if (clients != null && !clients.isEmpty()) {
+                        for (Client c : clients) model.addElement(c);
+                        clientComboBox.setModel(model);
+                        clientComboBox.setEnabled(true);
+                        clientComboBox.setSelectedIndex(0);
+                    } else {
+                        model.addElement(new Client("-1", "(No clients found)", "", "", ""));
+                        clientComboBox.setModel(model);
+                        clientComboBox.setEnabled(true);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    DefaultComboBoxModel<Client> model = new DefaultComboBoxModel<>();
+                    model.addElement(new Client("-1", "(Error loading clients)", "", "", ""));
+                    clientComboBox.setModel(model);
+                    clientComboBox.setEnabled(true);
                 }
             }
         };
@@ -432,4 +663,3 @@ public class ProjectDialog extends JDialog {
         return btn;
     }
 }
-

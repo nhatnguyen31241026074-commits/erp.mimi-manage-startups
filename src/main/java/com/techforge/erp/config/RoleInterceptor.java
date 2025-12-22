@@ -38,6 +38,21 @@ public class RoleInterceptor implements HandlerInterceptor {
         // Allow CORS preflight
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
 
+        String method = request.getMethod();
+        String path = request.getRequestURI();
+
+        // Remove context path if present
+        String context = request.getContextPath();
+        if (context != null && !context.isEmpty() && path.startsWith(context)) {
+            path = path.substring(context.length());
+        }
+
+        // Allow public GET for clients list (Firebase-style data read) so frontend can populate dropdowns
+        if (path.startsWith("/api/v1/clients") && "GET".equalsIgnoreCase(method)) {
+            logger.debug("Allowing public GET to {}", path);
+            return true;
+        }
+
         String requesterId = request.getHeader("X-Requester-ID");
         if (requesterId == null || requesterId.isEmpty()) {
             logger.warn("Missing X-Requester-ID header");
@@ -70,15 +85,6 @@ public class RoleInterceptor implements HandlerInterceptor {
         if (user == null) {
             logger.warn("User not found: {}", requesterId);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
-        }
-
-        String method = request.getMethod();
-        String path = request.getRequestURI();
-
-        // Remove context path if present
-        String context = request.getContextPath();
-        if (context != null && !context.isEmpty() && path.startsWith(context)) {
-            path = path.substring(context.length());
         }
 
         logger.debug("Authorization check: userId={}, role={}, method={}, path={}", requesterId, user.getRole(), method, path);

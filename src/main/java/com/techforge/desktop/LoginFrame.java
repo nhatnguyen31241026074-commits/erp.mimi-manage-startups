@@ -432,6 +432,11 @@ public class LoginFrame extends JFrame {
                             if ("EMPLOYEE".equalsIgnoreCase(userRole) || "MANAGER".equalsIgnoreCase(userRole)) {
                                 checkAndNotifyPendingTasks(userId, userName);
                             }
+
+                            // Client Notification: Show assigned projects after login
+                            if ("CLIENT".equalsIgnoreCase(userRole)) {
+                                checkAndNotifyAssignedProjects(userId, userName);
+                            }
                         });
                     } else {
                         showError("Login failed. Please check your credentials.");
@@ -498,6 +503,78 @@ public class LoginFrame extends JFrame {
             }
         };
         taskWorker.execute();
+    }
+
+    /**
+     * Check for projects assigned to the client and show notification
+     */
+    private void checkAndNotifyAssignedProjects(String clientId, String clientName) {
+        SwingWorker<Integer, Void> projectWorker = new SwingWorker<>() {
+            @Override
+            protected Integer doInBackground() {
+                try {
+                    String projectsResp = apiClient.get("/projects");
+                    JsonElement parsed = JsonParser.parseString(projectsResp);
+                    int count = 0;
+
+                    if (parsed.isJsonArray()) {
+                        JsonArray arr = parsed.getAsJsonArray();
+                        for (JsonElement el : arr) {
+                            if (!el.isJsonObject()) continue;
+                            JsonObject proj = el.getAsJsonObject();
+                            String pid = proj.has("id") && !proj.get("id").isJsonNull() ? proj.get("id").getAsString() : null;
+                            String projClientId = proj.has("clientId") && !proj.get("clientId").isJsonNull() ? proj.get("clientId").getAsString() : null;
+                            String status = proj.has("status") && !proj.get("status").isJsonNull() ? proj.get("status").getAsString() : "";
+
+                            if (projClientId != null && projClientId.equals(clientId)) {
+                                // Optionally ignore completed/cancelled projects
+                                if ("COMPLETED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) continue;
+                                count++;
+                            }
+                        }
+                    } else if (parsed.isJsonObject()) {
+                        // In case /projects returns an object wrapper like { data: [...] }
+                        JsonObject root = parsed.getAsJsonObject();
+                        if (root.has("data") && root.get("data").isJsonArray()) {
+                            JsonArray arr = root.getAsJsonArray("data");
+                            for (JsonElement el : arr) {
+                                if (!el.isJsonObject()) continue;
+                                JsonObject proj = el.getAsJsonObject();
+                                String projClientId = proj.has("clientId") && !proj.get("clientId").isJsonNull() ? proj.get("clientId").getAsString() : null;
+                                String status = proj.has("status") && !proj.get("status").isJsonNull() ? proj.get("status").getAsString() : "";
+                                if (projClientId != null && projClientId.equals(clientId)) {
+                                    if ("COMPLETED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) continue;
+                                    count++;
+                                }
+                            }
+                        }
+                    }
+
+                    return count;
+                } catch (Exception e) {
+                    System.err.println("Error checking assigned projects: " + e.getMessage());
+                    return 0;
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    int assignedCount = get();
+                    if (assignedCount > 0) {
+                        JOptionPane.showMessageDialog(null,
+                                "Welcome " + clientName + "!\n\n" +
+                                        "You have " + assignedCount + " active project" + (assignedCount > 1 ? "s" : "") + " assigned to you.\n\n" +
+                                        "Open the Projects page to view details.",
+                                "Project Assignment",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    }
+                } catch (Exception e) {
+                    // ignore notification errors
+                }
+            }
+        };
+        projectWorker.execute();
     }
 
     private void showError(String message) {

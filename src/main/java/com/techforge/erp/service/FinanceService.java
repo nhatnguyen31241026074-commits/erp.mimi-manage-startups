@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -256,6 +258,74 @@ public class FinanceService {
         }
 
         return future;
+    }
+
+    /**
+     * Return all payroll records stored in Firebase (transaction history).
+     * This method blocks briefly while waiting for the async Firebase callback (timeout 5s).
+     */
+    public List<Payroll> getTransactionHistory() {
+        List<Payroll> result = new ArrayList<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        try {
+            payrollsRef.addListenerForSingleValueEvent(new com.google.firebase.database.ValueEventListener() {
+                @Override
+                public void onDataChange(com.google.firebase.database.DataSnapshot snapshot) {
+                    try {
+                        if (snapshot != null && snapshot.exists()) {
+                            for (com.google.firebase.database.DataSnapshot child : snapshot.getChildren()) {
+                                try {
+                                    Payroll p = child.getValue(Payroll.class);
+                                    if (p != null) result.add(p);
+                                } catch (Exception ex) {
+                                    logger.warn("Failed to parse payroll child: {}", ex.getMessage());
+                                }
+                            }
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                }
+
+                @Override
+                public void onCancelled(com.google.firebase.database.DatabaseError error) {
+                    logger.error("Firebase read cancelled for payrolls: {}", error.getMessage());
+                    latch.countDown();
+                }
+            });
+
+            // Wait up to 5 seconds for Firebase callback
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            logger.error("Error while fetching transaction history", e);
+        }
+
+        // Filter to only PAID payrolls and sort newest-first by year, then month
+        try {
+            // Remove nulls just in case
+            result.removeIf(Objects::isNull);
+
+            // Keep only paid records
+            result.removeIf(p -> !Boolean.TRUE.equals(p.isPaid()));
+
+            // Sort by year desc, then month desc
+            result.sort((a, b) -> {
+                int ay = a == null ? Integer.MIN_VALUE : a.getYear();
+                int by = b == null ? Integer.MIN_VALUE : b.getYear();
+                int cmp = Integer.compare(by, ay); // descending year
+                if (cmp != 0) return cmp;
+                int am = a == null ? Integer.MIN_VALUE : a.getMonth();
+                int bm = b == null ? Integer.MIN_VALUE : b.getMonth();
+                return Integer.compare(bm, am); // descending month
+            });
+        } catch (Exception ex) {
+            logger.warn("Error filtering/sorting payrolls: {}", ex.getMessage());
+        }
+
+        return result;
     }
 
     public CompletableFuture<Expense> createExpense(Expense expense) {

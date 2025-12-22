@@ -1,6 +1,10 @@
 package com.techforge.erp.config;
 
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.techforge.erp.model.Client;
 import com.techforge.erp.model.User;
+import com.techforge.erp.service.ClientService;
 import com.techforge.erp.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +28,9 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private ClientService clientService;
+
     @Override
     public void run(String... args) throws Exception {
         logger.info("=== DataSeeder: Checking if demo data needs to be seeded ===");
@@ -35,11 +42,22 @@ public class DataSeeder implements CommandLineRunner {
             if (existingUser != null) {
                 logger.info("Demo data already exists. Skipping seeding.");
                 logger.info("Found user: {} ({})", existingUser.getUsername(), existingUser.getRole());
+                // Still ensure clients exist; if not, seed them
+                try {
+                    List<Client> existingClients = clientService.getAllClients();
+                    if (existingClients == null || existingClients.isEmpty()) {
+                        seedDemoClients();
+                    }
+                } catch (Exception ex) {
+                    logger.warn("Could not verify existing clients: {}", ex.getMessage());
+                }
                 return;
             }
 
             logger.info("No demo data found. Creating demo users...");
             seedDemoUsers();
+            // ensure demo clients exist
+            try { seedDemoClients(); } catch (Exception ex) { logger.warn("Failed to seed demo clients: {}", ex.getMessage()); }
             logger.info("=== DataSeeder: Demo data seeding complete! ===");
 
         } catch (Exception e) {
@@ -65,6 +83,36 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
+    private void seedDemoClients() {
+        logger.info("Seeding demo clients...");
+        try {
+            DatabaseReference root = FirebaseDatabase.getInstance().getReference("LTUD10");
+            DatabaseReference clientsRef = root.child("clients");
+
+            Client c1 = new Client();
+            c1.setName("Capsule Corp");
+            c1.setEmail("contact@capsule.corp");
+
+            String key1 = clientsRef.push().getKey();
+            if (key1 != null) {
+                c1.setId(key1);
+                clientsRef.child(key1).setValueAsync(c1).addListener(() -> logger.info("Seeded client: {} (id={})", c1.getName(), key1), Runnable::run);
+            }
+
+            Client c2 = new Client();
+            c2.setName("Red Ribbon Army");
+            c2.setEmail("contact@redribbon.com");
+
+            String key2 = clientsRef.push().getKey();
+            if (key2 != null) {
+                c2.setId(key2);
+                clientsRef.child(key2).setValueAsync(c2).addListener(() -> logger.info("Seeded client: {} (id={})", c2.getName(), key2), Runnable::run);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to seed demo clients: {}", e.getMessage(), e);
+        }
+    }
+
     private User createUser(String username, String email, String password, String fullName,
                             String role, Double baseSalary, Double hourlyRateOT) {
         User user = new User();
@@ -79,4 +127,3 @@ public class DataSeeder implements CommandLineRunner {
         return user;
     }
 }
-

@@ -13,5 +13,11 @@ public class Client {
     private String email;
     private String phone;
     private String company;
-}
 
+    @Override
+    public String toString() {
+        if (this.name != null && !this.name.isEmpty()) return this.name;
+        if (this.email != null && !this.email.isEmpty()) return this.email;
+        return this.id != null ? this.id : "(No clients found)";
+    }
+}

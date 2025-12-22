@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
@@ -37,6 +38,16 @@ public class FinanceController {
                 .exceptionally(ex -> ResponseEntity.status(500).body("Error fetching payroll: " + ex.getMessage()));
     }
 
+    @GetMapping("/transactions")
+    public ResponseEntity<Object> getTransactionHistory() {
+        try {
+            List<Payroll> list = financeService.getTransactionHistory();
+            return ResponseEntity.ok(list);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error fetching transaction history: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/pay")
     public ResponseEntity<Object> processMoMoPayment(@RequestBody java.util.Map<String, String> payload) {
         // Mock MoMo payment processing
@@ -63,4 +74,3 @@ public class FinanceController {
                 .exceptionally(ex -> ResponseEntity.status(500).body("Error creating expense: " + ex.getMessage()));
     }
 }
-

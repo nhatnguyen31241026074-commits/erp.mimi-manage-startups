@@ -53,11 +53,15 @@ public class ApiClient {
 
         Request request = requestBuilder.build();
 
+        System.out.println("[ApiClient] POST " + request.url());
+
         try (Response response = client.newCall(request).execute()) {
+            String respBody = response.body() != null ? response.body().string() : "";
+            System.out.println("[ApiClient] Response code=" + response.code() + " body=" + (respBody.length() > 200 ? respBody.substring(0, 200) + "..." : respBody));
             if (!response.isSuccessful()) {
-                throw new IOException("API Error: " + response.code() + " - " + response.message());
+                throw new IOException("API Error: " + response.code() + " - " + respBody);
             }
-            return response.body() != null ? response.body().string() : "";
+            return respBody;
         }
     }
 
@@ -79,11 +83,15 @@ public class ApiClient {
 
         Request request = requestBuilder.build();
 
+        System.out.println("[ApiClient] GET " + request.url() + " X-Requester-ID=" + (currentUserId != null ? currentUserId : "(none)"));
+
         try (Response response = client.newCall(request).execute()) {
+            String respBody = response.body() != null ? response.body().string() : "";
+            System.out.println("[ApiClient] Response code=" + response.code() + " body=" + (respBody.length() > 200 ? respBody.substring(0, 200) + "..." : respBody));
             if (!response.isSuccessful()) {
-                throw new IOException("API Error: " + response.code() + " - " + response.message());
+                throw new IOException("API Error: " + response.code() + " - " + respBody);
             }
-            return response.body() != null ? response.body().string() : "";
+            return respBody;
         }
     }
 
@@ -108,11 +116,15 @@ public class ApiClient {
 
         Request request = requestBuilder.build();
 
+        System.out.println("[ApiClient] PUT " + request.url());
+
         try (Response response = client.newCall(request).execute()) {
+            String respBody = response.body() != null ? response.body().string() : "";
+            System.out.println("[ApiClient] Response code=" + response.code() + " body=" + (respBody.length() > 200 ? respBody.substring(0, 200) + "..." : respBody));
             if (!response.isSuccessful()) {
-                throw new IOException("API Error: " + response.code() + " - " + response.message());
+                throw new IOException("API Error: " + response.code() + " - " + respBody);
             }
-            return response.body() != null ? response.body().string() : "";
+            return respBody;
         }
     }
 
@@ -133,9 +145,13 @@ public class ApiClient {
 
         Request request = requestBuilder.build();
 
+        System.out.println("[ApiClient] DELETE " + request.url());
+
         try (Response response = client.newCall(request).execute()) {
+            String respBody = response.body() != null ? response.body().string() : "";
+            System.out.println("[ApiClient] Response code=" + response.code() + " body=" + (respBody.length() > 200 ? respBody.substring(0, 200) + "..." : respBody));
             if (!response.isSuccessful()) {
-                throw new IOException("API Error: " + response.code() + " - " + response.message());
+                throw new IOException("API Error: " + response.code() + " - " + respBody);
             }
         }
     }
