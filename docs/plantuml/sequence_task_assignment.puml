@@ -1,0 +1,22 @@
+@startuml
+title Task Assignment Sequence — TechForge
+actor Manager as M
+participant "ProjectDetailDialog (UI)" as UI
+participant "ApiClient (Desktop)" as API
+participant "TaskController (API)" as TC
+participant "Firebase RTDB" as DB
+
+M -> UI: Open New Task form
+UI -> M: fill task details + select assignee
+M -> UI: Submit
+UI -> API: POST /api/v1/tasks {projectId, title, assignedUserId}
+API -> TC: POST /api/v1/tasks
+TC -> DB: write /tasks/{id}
+DB --> TC: ack
+TC -> DB: (optional) write /users/{assigneeId}/notifications or /notifications/{userId}
+TC --> API: 201 {task}
+API --> UI: success
+UI -> M: show created task
+
+@enduml
+

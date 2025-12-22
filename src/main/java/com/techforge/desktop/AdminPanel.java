@@ -21,6 +21,8 @@ public class AdminPanel extends JPanel {
     private DefaultTableModel tableModel;
     private JLabel statusLabel;
     private JLabel totalPayrollLabel;
+    private JLabel totalEmployeesLabel;
+    private JLabel pendingApprovalsLabel;
 
     // Financial Overview
     private JTable transactionTable;
@@ -33,6 +35,8 @@ public class AdminPanel extends JPanel {
         initializeUI();
         loadPayroll();
         loadTransactions();
+        // Start realtime stats for payroll/employee counts
+        loadPayrollStats();
     }
 
     private void initializeUI() {
@@ -396,10 +400,82 @@ public class AdminPanel extends JPanel {
         JPanel pendingCard = createStatCard("$0", "Pending Payroll", AppTheme.WARNING);
         totalPayrollLabel = (JLabel) ((JPanel) pendingCard.getComponent(0)).getComponent(0);
         panel.add(pendingCard);
-        panel.add(createStatCard("15", "Total Employees", AppTheme.SECONDARY));
-        panel.add(createStatCard("3", "Pending Approvals", AppTheme.DANGER));
+
+        // Total Employees (live)
+        JPanel empCard = createStatCard("0", "Total Employees", AppTheme.SECONDARY);
+        totalEmployeesLabel = (JLabel) ((JPanel) empCard.getComponent(0)).getComponent(0);
+        panel.add(empCard);
+
+        // Pending Approvals (live)
+        JPanel approvalsCard = createStatCard("0", "Pending Approvals", AppTheme.DANGER);
+        pendingApprovalsLabel = (JLabel) ((JPanel) approvalsCard.getComponent(0)).getComponent(0);
+        panel.add(approvalsCard);
 
         return panel;
+    }
+
+    /**
+     * Listen to LTUD10/users and update Total Employees and Pending Approvals in realtime.
+     */
+    private void loadPayrollStats() {
+        try {
+            com.google.firebase.database.DatabaseReference usersRef = com.google.firebase.database.FirebaseDatabase
+                    .getInstance()
+                    .getReference()
+                    .child("LTUD10")
+                    .child("users");
+
+            usersRef.addValueEventListener(new com.google.firebase.database.ValueEventListener() {
+                @Override
+                public void onDataChange(com.google.firebase.database.DataSnapshot snapshot) {
+                    int empCount = 0;
+                    int pendingCount = 0;
+                    try {
+                        for (com.google.firebase.database.DataSnapshot child : snapshot.getChildren()) {
+                            try {
+                                Object roleObj = child.child("role").getValue();
+                                String role = roleObj == null ? "" : roleObj.toString().trim();
+                                if ("EMPLOYEE".equalsIgnoreCase(role)) {
+                                    empCount++;
+                                }
+
+                                // Payment status may be stored on user as paymentStatus or status
+                                Object payObj = child.child("paymentStatus").getValue();
+                                if (payObj == null) payObj = child.child("status").getValue();
+                                String payStatus = payObj == null ? "" : payObj.toString().trim();
+                                if ("PENDING".equalsIgnoreCase(payStatus)) {
+                                    pendingCount++;
+                                }
+                            } catch (Exception ex) {
+                                // per-user error should not break loop
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error iterating users snapshot: " + e.getMessage());
+                    }
+
+                    final int fEmp = empCount;
+                    final int fPending = pendingCount;
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        try {
+                            if (totalEmployeesLabel != null) totalEmployeesLabel.setText(String.valueOf(fEmp));
+                            if (pendingApprovalsLabel != null) pendingApprovalsLabel.setText(String.valueOf(fPending));
+                        } catch (Exception ex) {
+                            System.err.println("Error updating payroll stat labels: " + ex.getMessage());
+                        }
+                    });
+                }
+
+                @Override
+                public void onCancelled(com.google.firebase.database.DatabaseError error) {
+                    System.err.println("usersRef listener cancelled: " + error.getMessage());
+                }
+            });
+
+        } catch (Exception ex) {
+            System.err.println("Failed to initialize payroll stats listener: " + ex.getMessage());
+            ex.printStackTrace();
+        }
     }
 
     private JPanel createStatCard(String value, String label, Color accentColor) {
@@ -565,6 +641,7 @@ public class AdminPanel extends JPanel {
                     double totalPending = 0;
                     int employeeCount = 0;
                     int noWorkCount = 0;
+                    int pendingApprovalsCount = 0; // NEW: count of PENDING payroll rows
 
                     for (JsonElement elem : payrolls) {
                         JsonObject payroll = elem.getAsJsonObject();
@@ -594,6 +671,8 @@ public class AdminPanel extends JPanel {
                         } else {
                             displayStatus = "PENDING";
                             totalPending += total;
+                            // increment pending approvals counter when a payroll row is pending
+                            pendingApprovalsCount++;
                         }
 
                         tableModel.addRow(new Object[]{
@@ -610,9 +689,23 @@ public class AdminPanel extends JPanel {
                     // Apply custom row renderer for NO_WORK rows
                     applyPayrollTableRenderers();
 
-                    totalPayrollLabel.setText(String.format("$%.0f", totalPending));
-                    statusLabel.setText(String.format("Loaded %d employees (%d with work, %d without)",
-                        employeeCount, employeeCount - noWorkCount, noWorkCount));
+                    // Update summary labels on EDT
+                    final double fTotalPending = totalPending;
+                    final int fEmployeeCount = employeeCount;
+                    final int fNoWorkCount = noWorkCount;
+                    final int fPendingApprovals = pendingApprovalsCount;
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        try {
+                            totalPayrollLabel.setText(String.format("$%.0f", fTotalPending));
+                            statusLabel.setText(String.format("Loaded %d employees (%d with work, %d without)",
+                                fEmployeeCount, fEmployeeCount - fNoWorkCount, fNoWorkCount));
+                            if (pendingApprovalsLabel != null) {
+                                pendingApprovalsLabel.setText(String.valueOf(fPendingApprovals));
+                            }
+                        } catch (Exception ex) {
+                            System.err.println("Error updating payroll summary labels: " + ex.getMessage());
+                        }
+                    });
 
                     // If this load was triggered by Refresh, show confirmation
                     if (showSyncToast) {

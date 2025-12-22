@@ -36,6 +36,8 @@ public class ManagerPanel extends JPanel {
         this.apiClient = apiClient;
         initializeUI();
         loadProjects();
+        // Start realtime listeners to update stat cards
+        loadRealtimeData();
     }
 
     private void initializeUI() {
@@ -1139,5 +1141,122 @@ public class ManagerPanel extends JPanel {
             return "DELETE";
         }
     }
-}
 
+    /**
+     * Attach realtime Firebase listeners to LTUD10/projects and LTUD10/tasks
+     * and update the stat labels on the Swing EDT.
+     */
+    private void loadRealtimeData() {
+        try {
+            com.google.firebase.database.DatabaseReference root = com.google.firebase.database.FirebaseDatabase
+                    .getInstance()
+                    .getReference()
+                    .child("LTUD10");
+
+            com.google.firebase.database.DatabaseReference projectsRef = root.child("projects");
+            com.google.firebase.database.DatabaseReference tasksRef = root.child("tasks");
+
+            final java.text.NumberFormat currencyFmt = java.text.NumberFormat.getCurrencyInstance(java.util.Locale.US);
+
+            // Projects listener: active projects and total budget
+            projectsRef.addValueEventListener(new com.google.firebase.database.ValueEventListener() {
+                @Override
+                public void onDataChange(com.google.firebase.database.DataSnapshot snapshot) {
+                    int activeCount = 0;
+                    double totalBudget = 0.0;
+                    try {
+                        for (com.google.firebase.database.DataSnapshot child : snapshot.getChildren()) {
+                            try {
+                                Object statusObj = child.child("status").getValue();
+                                String status = statusObj == null ? null : statusObj.toString();
+
+                                // Active if status is null or not FINISHED (case-insensitive)
+                                if (status == null || !"FINISHED".equalsIgnoreCase(status.trim())) {
+                                    activeCount++;
+                                }
+
+                                // Budget parsing: support Number or String
+                                Object budgetObj = child.child("budget").getValue();
+                                double b = 0.0;
+                                if (budgetObj instanceof Number) {
+                                    b = ((Number) budgetObj).doubleValue();
+                                } else if (budgetObj != null) {
+                                    try {
+                                        String s = budgetObj.toString().trim();
+                                        s = s.replaceAll("[^0-9.\\-]", "");
+                                        if (!s.isEmpty()) b = Double.parseDouble(s);
+                                    } catch (Exception ex) {
+                                        // ignore malformed number
+                                    }
+                                }
+                                totalBudget += b;
+                            } catch (Exception ex) {
+                                // per-child fail should not break loop
+                                System.err.println("Error parsing project child: " + ex.getMessage());
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error iterating projects snapshot: " + e.getMessage());
+                    }
+
+                    final int fActive = activeCount;
+                    final double fBudget = totalBudget;
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        try {
+                            statActiveProjects.setText(String.valueOf(fActive));
+                            statTotalBudget.setText(currencyFmt.format(fBudget));
+                        } catch (Exception ex) {
+                            System.err.println("Error updating project stat labels: " + ex.getMessage());
+                        }
+                    });
+                }
+
+                @Override
+                public void onCancelled(com.google.firebase.database.DatabaseError error) {
+                    System.err.println("projectsRef listener cancelled: " + error.getMessage());
+                }
+            });
+
+            // Tasks listener: pending tasks
+            tasksRef.addValueEventListener(new com.google.firebase.database.ValueEventListener() {
+                @Override
+                public void onDataChange(com.google.firebase.database.DataSnapshot snapshot) {
+                    int pending = 0;
+                    try {
+                        for (com.google.firebase.database.DataSnapshot child : snapshot.getChildren()) {
+                            try {
+                                Object statusObj = child.child("status").getValue();
+                                String status = statusObj == null ? "" : statusObj.toString().trim();
+                                if ("TODO".equalsIgnoreCase(status) || "IN_PROGRESS".equalsIgnoreCase(status)) {
+                                    pending++;
+                                }
+                            } catch (Exception ex) {
+                                // continue on per-child error
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error iterating tasks snapshot: " + e.getMessage());
+                    }
+
+                    final int fPending = pending;
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        try {
+                            statPendingTasks.setText(String.valueOf(fPending));
+                        } catch (Exception ex) {
+                            System.err.println("Error updating pending tasks label: " + ex.getMessage());
+                        }
+                    });
+                }
+
+                @Override
+                public void onCancelled(com.google.firebase.database.DatabaseError error) {
+                    System.err.println("tasksRef listener cancelled: " + error.getMessage());
+                }
+            });
+
+        } catch (Exception ex) {
+            System.err.println("Failed to initialize realtime listeners: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+}

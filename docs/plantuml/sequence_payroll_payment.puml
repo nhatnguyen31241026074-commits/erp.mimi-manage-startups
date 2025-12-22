@@ -1,0 +1,31 @@
+@startuml
+title Payroll Payment Sequence — TechForge (MoMo)
+actor Finance as F
+participant "FinancePanel (UI)" as UI
+participant "ApiClient (Desktop)" as API
+participant "FinanceController (API)" as FC
+participant "Payment Gateway (MoMo)" as GW
+participant "Firebase RTDB" as DB
+
+F -> UI: Select payroll rows and click Pay
+UI -> API: POST /api/v1/payment/pay-invoice/{invoiceId}
+API -> FC: POST /api/v1/payment/pay-invoice/{invoiceId}
+FC -> GW: Create payment session (server to gateway)
+GW --> FC: payUrl / paymentSessionId
+FC --> API: 200 {payUrl, sessionId}
+API --> UI: show MomoPaymentDialog(payUrl)
+F -> UI: User completes payment via payUrl/QR
+GW -> FC: callback POST /api/v1/finance/pay {transactionId, status, details}
+FC -> FC: verify callback signature
+alt valid and status=SUCCESS
+    FC -> DB: update payrolls -> set isPaid=true, transactionId
+    FC -> DB: write /transactions/{txnId} with details
+    FC --> API: 200 OK
+    API --> UI: notify payment success
+else invalid or fail
+    FC --> API: 400/403 (log)
+    API --> UI: notify failure
+end
+
+@enduml
+
