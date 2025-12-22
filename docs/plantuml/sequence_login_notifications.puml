@@ -1,0 +1,34 @@
+@startuml
+title Login Notification Sequence — TechForge
+actor User as U
+participant "LoginFrame (UI)" as UI
+participant "ApiClient (Desktop)" as API
+participant "AuthController (API)" as AC
+participant "ProjectController / TaskController" as PC
+participant "Firebase RTDB" as DB
+
+U -> UI: Enter credentials and click Login
+UI -> API: POST /api/v1/auth/login
+API -> AC: POST /api/v1/auth/login
+AC -> DB: verify credentials
+DB --> AC: user object (with role,userId)
+AC --> API: 200 {userId, role, user}
+API --> UI: set session (X-Requester-ID)
+UI -> UI: open MainDashboardFrame
+alt role == EMPLOYEE or MANAGER
+    UI -> API: GET /api/v1/tasks
+    API -> PC: GET /api/v1/tasks
+    PC -> DB: read tasks
+    DB --> PC: return tasks
+    PC --> API: 200 [tasks]
+    API --> UI: compute assigned TODO count and show modal if >0
+else role == CLIENT
+    UI -> API: GET /api/v1/projects
+    API -> PC: GET /api/v1/projects
+    PC -> DB: read projects
+    DB --> PC: return projects
+    API --> UI: filter clientId == userId and show modal if >0
+end
+
+@enduml
+

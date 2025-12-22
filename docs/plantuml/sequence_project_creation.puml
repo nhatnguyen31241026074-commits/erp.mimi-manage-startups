@@ -1,0 +1,33 @@
+@startuml
+title Project Creation Sequence — TechForge
+actor Manager as M
+participant "ProjectDialog (UI)" as UI
+participant "ApiClient (Desktop)" as API
+participant "ProjectController (API)" as PC
+participant "Firebase RTDB" as DB
+
+M -> UI: Open ProjectDialog
+UI -> API: GET /api/v1/clients
+API -> PC: GET /api/v1/clients
+PC -> DB: read /clients
+DB --> PC: returns [] or array
+PC --> API: 200 []
+API -> UI: returns []
+UI -> API: GET /api/v1/users (fallback)
+API -> PC: GET /api/v1/users
+PC -> DB: read /users
+DB --> PC: returns users map/array
+PC --> API: 200 [users]
+API -> UI: return filtered clients (role==CLIENT)
+UI -> M: show JComboBox<Client>
+M -> UI: Fill form, select client
+UI -> API: POST /api/v1/projects {name,budget,startDate,endDate,clientId}
+API -> PC: POST /api/v1/projects
+PC -> DB: push /projects/{newId} with payload
+DB --> PC: ack
+PC --> API: 201 {project}
+API --> UI: success
+UI -> M: show success dialog
+
+@enduml
+
