@@ -40,6 +40,7 @@ public class PayrollPanel extends JPanel {
         topPanel.add(lblStatus);
         add(topPanel, BorderLayout.NORTH);
 
+        //Event listener, thay vì dùng event -> dùng e cho nhanh
         btnRefresh.addActionListener(e -> loadPayrollData());
         btnPayViaMomo.addActionListener(e -> onPayViaMomo());
 
@@ -88,6 +89,7 @@ public class PayrollPanel extends JPanel {
                 } catch (Exception ignored) {}
             }
         }
+        //guard clause (chặn sớm)
         if (total <= 0) {
             JOptionPane.showMessageDialog(this, "No payroll to pay.", "Info", JOptionPane.INFORMATION_MESSAGE);
             return;

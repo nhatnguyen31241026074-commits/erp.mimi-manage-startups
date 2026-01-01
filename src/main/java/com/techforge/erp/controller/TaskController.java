@@ -4,6 +4,8 @@ import com.techforge.erp.model.Task;
 import com.techforge.erp.model.User;
 import com.techforge.erp.service.TaskService;
 import com.techforge.erp.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/tasks")
+@Tag(name = "Task", description = "Task management and assignment endpoints")
 public class TaskController {
 
     @Autowired
@@ -23,6 +26,7 @@ public class TaskController {
     private UserService userService;
 
     @PostMapping
+    @Operation(summary = "Create a new task")
     public CompletableFuture<ResponseEntity<Object>> createTask(@RequestBody Task task) {
         return taskService.createTask(task)
                 .<ResponseEntity<Object>>thenApply(saved -> ResponseEntity.ok(saved))
@@ -40,6 +44,7 @@ public class TaskController {
      * - If user is MANAGER/ADMIN, return all (or filtered).
      */
     @GetMapping
+    @Operation(summary = "List tasks with optional filters (projectId, assignee)")
     public CompletableFuture<ResponseEntity<Object>> getAllTasks(
             @RequestParam(required = false) String assignee,
             @RequestParam(required = false) String projectId,
@@ -122,6 +127,7 @@ public class TaskController {
 
     // POST endpoint for updating task status (used by Kanban drag & drop)
     @PostMapping("/{id}")
+    @Operation(summary = "Update task fields or status (used by Kanban)")
     public CompletableFuture<ResponseEntity<Object>> updateTaskStatus(@PathVariable String id, @RequestBody java.util.Map<String, Object> payload) {
         return taskService.getTaskById(id)
                 .thenCompose(existingTask -> {
@@ -179,4 +185,3 @@ public class TaskController {
                 });
     }
 }
-

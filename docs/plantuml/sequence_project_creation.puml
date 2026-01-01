@@ -31,3 +31,46 @@ UI -> M: show success dialog
 
 @enduml
 
+'// ==========================================================
+// SPEC (Tiếng Việt): Mô tả chi tiết luồng "Project Creation"
+// File: sequence_project_creation.puml
+// Mục tiêu: Mô tả quy trình người quản lý mở dialog tạo project, hệ thống nạp danh sách client,
+// và lưu project với trường clientId tham chiếu đến user/client tương ứng.
+//
+// 1. Actors / Components:
+//  - Manager (người thao tác)
+//  - ProjectDialog (UI Swing) — form có JComboBox<Client>
+//  - ApiClient (desktop) — gọi HTTP tới backend
+//  - ProjectController (backend Spring) — xử lý /api/v1/clients và /api/v1/projects
+//  - Firebase RTDB — lưu /clients và /projects nodes
+//
+// 2. Tiền điều kiện:
+//  - Manager đã đăng nhập (X-Requester-ID header được đính kèm)
+//  - Dữ liệu clients tồn tại trong Firebase (có thể là map object từ Firebase)
+//
+// 3. Luồng chi tiết:
+//  - Bước 1: Khi mở ProjectDialog, UI gọi API /api/v1/clients để lấy danh sách clients.
+//    Backend đọc node /clients từ Firebase; nếu trả [] (empty), UI sẽ thử fallback gọi /users
+//    để lọc những users có role == CLIENT.
+//  - Bước 2: UI hiển thị JComboBox với các Client (toString() hiển thị tên). Nếu không có client,
+//    hiển thị placeholder "(No clients found)" nhưng vẫn cho phép người dùng điền thông tin project.
+//  - Bước 3: Khi người dùng submit form, UI gửi POST /api/v1/projects với payload có clientId.
+//  - Bước 4: ProjectController validate payload, gọi ProjectService.createProject để push data
+//    vào /projects/{newId} trên Firebase và trả về object project mới.
+//  - Bước 5: UI nhận 201 và hiển thị thông báo thành công; có thể refresh project list.
+//
+// 4. Mapping code:
+//  - UI loading/parsing: src/main/java/com/techforge/desktop/ProjectDialog.java (loadClients method)
+//  - Controller: src/main/java/com/techforge/erp/controller/ProjectController.java
+//  - Service: src/main/java/com/techforge/erp/service/ProjectService.java (createProject)
+//
+// 5. Hardening:
+//  - Khi backend trả map dạng Firebase (keys as ids), UI loadClients() phải map id->Client object,
+//    set Client.id = key. UI phải handle both array and map formats.
+//  - Validate clientId exists on server side before writing project record.
+//
+// 6. Postconditions:
+//  - /projects/{newId} tồn tại và có trường clientId trỏ tới id client.
+//  - UI hiển thị project mới và project list được cập nhật hơn.
+//
+// ==========================================================

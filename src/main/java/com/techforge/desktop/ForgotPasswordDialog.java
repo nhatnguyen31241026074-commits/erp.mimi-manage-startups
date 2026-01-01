@@ -258,7 +258,7 @@ public class ForgotPasswordDialog extends JDialog {
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
         // Confirm Reset Button (Orange, prominent)
-        resetButton = createStyledButton("✓ Confirm Reset", AppTheme.PRIMARY);
+        resetButton = createStyledButton("Confirm Reset", AppTheme.PRIMARY);
         resetButton.addActionListener(e -> handleResetPassword());
         buttonPanel.add(resetButton, BorderLayout.CENTER);
 

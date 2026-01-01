@@ -2,6 +2,8 @@ package com.techforge.erp.controller;
 
 import com.techforge.erp.model.*;
 import com.techforge.erp.service.ReportService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
  */
 @RestController
 @RequestMapping("/api/v1/reports")
+@Tag(name = "Report", description = "Reporting and activity endpoints")
 public class ReportController {
 
     private final ReportService reportService;
@@ -30,6 +33,7 @@ public class ReportController {
      * Returns formatted activity strings for Client dashboard.
      */
     @GetMapping("/activities")
+    @Operation(summary = "Get recent activities for dashboard")
     public CompletableFuture<ResponseEntity<Object>> getActivities(
             @RequestParam(required = false) String projectId) {
 
@@ -54,6 +58,7 @@ public class ReportController {
      * Uses ReportService.generateProjectReport for real data.
      */
     @GetMapping("/project/{projectId}")
+    @Operation(summary = "Generate a detailed project report")
     public CompletableFuture<ResponseEntity<Object>> getProjectReport(@PathVariable String projectId) {
         return reportService.generateProjectReport(projectId)
             .thenApply(report -> ResponseEntity.ok((Object) report))
@@ -71,6 +76,7 @@ public class ReportController {
      * Uses ReportService.getProjectProgress for real data.
      */
     @GetMapping("/project/{projectId}/progress")
+    @Operation(summary = "Get project progress and risk analysis")
     public CompletableFuture<ResponseEntity<Object>> getProjectProgress(@PathVariable String projectId) {
         return reportService.getProjectProgress(projectId)
             .thenApply(progress -> ResponseEntity.ok((Object) progress))
@@ -86,6 +92,7 @@ public class ReportController {
      * Uses ReportService.generateMonthlyReport for real data.
      */
     @GetMapping("/monthly")
+    @Operation(summary = "Generate monthly financial report")
     public CompletableFuture<ResponseEntity<Object>> getMonthlyReport(
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Integer year) {

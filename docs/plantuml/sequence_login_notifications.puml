@@ -32,3 +32,44 @@ end
 
 @enduml
 
+'// ==========================================================
+// SPEC (Tiếng Việt): Mô tả chi tiết luồng "Login & Notifications"
+// File: sequence_login_notifications.puml
+// Mục tiêu: Mô tả quá trình xác thực người dùng và logic hiển thị thông báo/tóm tắt
+// khi đăng nhập (ví dụ: thông báo task được giao hoặc project có công việc cần client xem).
+//
+// 1. Actors / Components:
+//  - User (người dùng trên client)
+//  - LoginFrame (UI Swing) — màn hình đăng nhập
+//  - ApiClient (desktop) — gửi POST /api/v1/auth/login và lưu session header
+//  - AuthController (backend) — xác thực credentials, trả user object
+//  - ProjectController / TaskController — endpoints truy vấn dữ liệu sau login
+//  - Firebase RTDB — lưu user, tasks, projects
+//
+// 2. Tiền điều kiện:
+//  - Người dùng có tài khoản (username/email + password) đã đăng ký
+//  - Backend có quyền đọc node /users để so khớp credentials
+//
+// 3. Luồng chi tiết:
+//  - Bước 1: UI gửi POST /api/v1/auth/login với credentials; ApiClient chuyển request tới AuthController.
+//  - Bước 2: AuthController kiểm tra với Firebase (hoặc service) và trả user object bao gồm role và userId.
+//  - Bước 3: ApiClient lưu session (ví dụ nội bộ và header X-Requester-ID) và UI mở MainDashboardFrame.
+//  - Bước 4: Tùy role, UI gọi các API phù hợp để fetch data (tasks cho EMPLOYEE/MANAGER, projects cho CLIENT).
+//  - Bước 5: Sau khi nhận dữ liệu, UI tính toán các chỉ số (ví dụ assigned TODO count) và nếu >0
+//    hiển thị modal thông báo hoặc badge.
+//
+// 4. Mapping code:
+//  - Login UI: src/main/java/com/techforge/desktop/LoginFrame.java (handleLogin method)
+//  - AuthController: src/main/java/com/techforge/erp/controller/AuthController.java
+//  - Task/Project controllers: TaskController.java, ProjectController.java
+//
+// 5. Hardening & UX:
+//  - Throttle login attempts; show generic error message to avoid user enumeration.
+//  - After login, request only necessary data for initial dashboard; lazy-load heavy reports.
+//  - Ensure X-Requester-ID is attached to subsequent requests so RoleInterceptor can enforce RBAC.
+//
+// 6. Postconditions:
+//  - Session established (desktop holds X-Requester-ID); dashboard opens with appropriate
+//    modals/notifications reflecting outstanding tasks or projects.
+//
+// ==========================================================

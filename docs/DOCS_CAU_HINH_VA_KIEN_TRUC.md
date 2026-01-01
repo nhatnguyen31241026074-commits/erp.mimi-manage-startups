@@ -1,4 +1,4 @@
-DOCS_CAU_HINH_VA_KIEN_TRUC.md
+    DOCS_CAU_HINH_VA_KIEN_TRUC.md
 
 Tiêu đề: Phân tích cấu hình & kiến trúc dự án TechForge ERP
 Ngày: 2025-12-21

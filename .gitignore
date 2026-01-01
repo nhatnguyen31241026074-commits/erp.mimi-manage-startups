@@ -50,3 +50,9 @@ src/main/resources/application.properties
 target/
 *.iml
 .DS_Store
+
+/out/
+/target/
+*.jar
+*.exe
+.idea/

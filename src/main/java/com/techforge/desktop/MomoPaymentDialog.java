@@ -85,7 +85,7 @@ public class MomoPaymentDialog extends JDialog {
         }
 
         // Open Web Button
-        JButton btnOpenWeb = new JButton("🔗 Open MoMo Gateway");
+        JButton btnOpenWeb = new JButton("Open MoMo Gateway");
         btnOpenWeb.setBackground(new Color(0xA50064));
         btnOpenWeb.setForeground(Color.WHITE);
         btnOpenWeb.setFont(new Font("Segoe UI", Font.BOLD, 16));

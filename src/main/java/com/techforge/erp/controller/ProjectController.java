@@ -2,6 +2,8 @@ package com.techforge.erp.controller;
 
 import com.techforge.erp.model.Project;
 import com.techforge.erp.service.ProjectService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,12 +12,14 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/v1/projects")
+@Tag(name = "Project", description = "Project management endpoints")
 public class ProjectController {
 
     @Autowired
     private ProjectService projectService;
 
     @PostMapping
+    @Operation(summary = "Create a new project")
     public CompletableFuture<ResponseEntity<Object>> createProject(@RequestBody Project project) {
         return projectService.createProject(project)
                 .<ResponseEntity<Object>>thenApply(saved -> ResponseEntity.ok(saved))
@@ -26,6 +30,7 @@ public class ProjectController {
     }
 
     @GetMapping
+    @Operation(summary = "Get all projects")
     public CompletableFuture<ResponseEntity<Object>> getAllProjects() {
         return projectService.getAllProjects()
                 .<ResponseEntity<Object>>thenApply(list -> ResponseEntity.ok(list))
@@ -36,6 +41,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Get project by id")
     public CompletableFuture<ResponseEntity<Object>> getProjectById(@PathVariable String id) {
         return projectService.getProjectById(id)
                 .<ResponseEntity<Object>>thenApply(p -> {
@@ -49,6 +55,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Update project by id")
     public CompletableFuture<ResponseEntity<Object>> updateProject(@PathVariable String id, @RequestBody Project project) {
         project.setId(id);
         return projectService.updateProject(project)
@@ -60,6 +67,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Delete project by id")
     public CompletableFuture<ResponseEntity<Object>> deleteProject(@PathVariable String id) {
         return projectService.deleteProject(id)
                 .<ResponseEntity<Object>>thenApply(v -> ResponseEntity.ok().build())
@@ -69,4 +77,3 @@ public class ProjectController {
                 });
     }
 }
-

@@ -7,6 +7,8 @@ import com.techforge.erp.model.User;
 import com.techforge.erp.model.ai.AIRiskAnalysis;
 import com.techforge.erp.model.ai.AISuggestion;
 import com.techforge.erp.service.AIService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/v1/ai")
+@Tag(name = "AI", description = "AI integration endpoints (Gemini)")
 public class AIController {
     private final Logger logger = LoggerFactory.getLogger(AIController.class);
     private final AIService aiService;
@@ -30,6 +33,7 @@ public class AIController {
     }
 
     @PostMapping("/suggest")
+    @Operation(summary = "Suggest an assignee for a Task using AI")
     public CompletableFuture<ResponseEntity<AISuggestion>> suggestAssignee(@RequestBody Map<String, Object> body) {
         try {
             Object taskObj = body.get("task");
@@ -52,6 +56,7 @@ public class AIController {
     }
 
     @PostMapping("/risk")
+    @Operation(summary = "Analyze project risk using AI")
     public CompletableFuture<ResponseEntity<AIRiskAnalysis>> analyzeRisk(@RequestBody Map<String, Object> body) {
         try {
             Object projectObj = body.get("project");

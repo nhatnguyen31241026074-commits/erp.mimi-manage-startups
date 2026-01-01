@@ -1,0 +1,59 @@
+Manifest-Version: 1.0
+Main-Class: com.techforge.desktop.UnifiedLauncher
+Class-Path: jsr305-3.0.2.jar logback-classic-1.4.14.jar jackson-datatype
+ -jdk8-2.15.4.jar spring-beans-6.1.4.jar okio-3.6.0.jar httpclient-4.5.1
+ 4.jar snakeyaml-2.2.jar gson-2.10.1.jar spring-core-6.1.4.jar opencensu
+ s-contrib-http-util-0.31.1.jar google-cloud-core-2.19.0.jar annotations
+ -13.0.jar log4j-to-slf4j-2.21.1.jar grpc-xds-1.55.1.jar spring-security
+ -crypto-6.2.2.jar perfmark-api-0.26.0.jar google-http-client-jackson2-1
+ .43.1.jar proto-google-cloud-storage-v2-2.22.4-alpha.jar jakarta.annota
+ tion-api-2.1.1.jar spring-boot-autoconfigure-3.2.3.jar spring-boot-star
+ ter-json-3.2.3.jar flatlaf-3.4.jar grpc-context-1.55.1.jar grpc-protobu
+ f-lite-1.55.1.jar google-oauth-client-1.34.1.jar kotlin-stdlib-jdk7-1.9
+ .22.jar netty-codec-4.1.107.Final.jar jakarta.mail-2.0.2.jar animal-sni
+ ffer-annotations-1.23.jar grpc-grpclb-1.55.1.jar spring-webmvc-6.1.4.ja
+ r netty-resolver-4.1.107.Final.jar spring-boot-starter-security-3.2.3.j
+ ar grpc-auth-1.55.1.jar spring-security-core-6.2.2.jar checker-qual-3.3
+ 2.0.jar spring-security-web-6.2.2.jar javax.annotation-api-1.3.2.jar pr
+ oto-google-common-protos-2.20.0.jar jackson-databind-2.15.4.jar grpc-ne
+ tty-shaded-1.55.1.jar spring-boot-starter-logging-3.2.3.jar okio-jvm-3.
+ 6.0.jar proto-google-cloud-firestore-bundle-v1-3.13.0.jar firebase-admi
+ n-9.2.0.jar failureaccess-1.0.1.jar grpc-google-cloud-storage-v2-2.22.4
+ -alpha.jar netty-handler-4.1.107.Final.jar tomcat-embed-websocket-10.1.
+ 19.jar logback-core-1.4.14.jar jul-to-slf4j-2.0.12.jar google-http-clie
+ nt-gson-1.42.3.jar okhttp-4.12.0.jar spring-boot-starter-3.2.3.jar kotl
+ in-stdlib-1.9.22.jar spring-boot-starter-tomcat-3.2.3.jar error_prone_a
+ nnotations-2.18.0.jar opencensus-contrib-grpc-util-0.31.1.jar protobuf-
+ java-3.23.2.jar spring-expression-6.1.4.jar api-common-2.12.0.jar grpc-
+ alts-1.55.1.jar auto-value-annotations-1.10.1.jar google-cloud-storage-
+ 2.22.4.jar guava-31.1-jre.jar micrometer-commons-1.12.3.jar proto-googl
+ e-cloud-firestore-v1-3.13.0.jar google-http-client-appengine-1.43.1.jar
+  jfreechart-1.5.3.jar spring-boot-starter-mail-3.2.3.jar google-api-cli
+ ent-2.2.0.jar gax-2.29.0.jar spring-boot-3.2.3.jar spring-jcl-6.1.4.jar
+  proto-google-iam-v1-1.15.0.jar gax-grpc-2.29.0.jar netty-transport-nat
+ ive-unix-common-4.1.107.Final.jar httpcore-4.4.16.jar threetenbp-1.6.8.
+ jar spring-web-6.1.4.jar grpc-protobuf-1.55.1.jar spring-aop-6.1.4.jar 
+ google-cloud-core-http-2.19.0.jar kotlin-stdlib-jdk8-1.9.22.jar netty-b
+ uffer-4.1.107.Final.jar tomcat-embed-core-10.1.19.jar gapic-google-clou
+ d-storage-v2-2.22.4-alpha.jar listenablefuture-9999.0-empty-to-avoid-co
+ nflict-with-guava.jar gax-httpjson-0.114.0.jar spring-websocket-6.1.4.j
+ ar micrometer-observation-1.12.3.jar spring-boot-starter-websocket-3.2.
+ 3.jar opencensus-api-0.31.1.jar re2j-1.6.jar opencensus-proto-0.2.0.jar
+  spring-security-config-6.2.2.jar jackson-datatype-jsr310-2.15.4.jar pr
+ otobuf-java-util-3.23.2.jar google-api-client-gson-2.2.0.jar spring-con
+ text-6.1.4.jar log4j-api-2.21.1.jar kotlin-stdlib-common-1.9.22.jar goo
+ gle-auth-library-credentials-1.17.0.jar grpc-core-1.55.1.jar angus-acti
+ vation-2.0.1.jar commons-logging-1.2.jar spring-boot-starter-web-3.2.3.
+ jar google-http-client-1.43.1.jar google-api-services-storage-v1-rev202
+ 30301-2.0.0.jar jackson-core-2.15.4.jar slf4j-api-2.0.12.jar google-aut
+ h-library-oauth2-http-1.17.0.jar grpc-googleapis-1.55.1.jar grpc-api-1.
+ 55.1.jar commons-codec-1.16.1.jar jakarta.activation-api-2.1.2.jar goog
+ le-cloud-core-grpc-2.19.0.jar netty-codec-http-4.1.107.Final.jar grpc-r
+ ls-1.55.1.jar google-cloud-firestore-3.13.0.jar j2objc-annotations-1.3.
+ jar google-http-client-apache-v2-1.42.3.jar annotations-4.1.1.4.jar grp
+ c-services-1.55.1.jar conscrypt-openjdk-uber-2.5.2.jar netty-common-4.1
+ .107.Final.jar grpc-stub-1.55.1.jar spring-context-support-6.1.4.jar to
+ mcat-embed-el-10.1.19.jar spring-messaging-6.1.4.jar jackson-annotation
+ s-2.15.4.jar jackson-module-parameter-names-2.15.4.jar netty-transport-
+ 4.1.107.Final.jar
+

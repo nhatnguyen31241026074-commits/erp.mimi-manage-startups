@@ -20,3 +20,47 @@ UI -> M: show created task
 
 @enduml
 
+'// ==========================================================
+// SPEC (Tiếng Việt): Mô tả chi tiết luồng "Task Assignment"
+// File: sequence_task_assignment.puml
+// Mục tiêu: Mô tả quy trình khi người quản lý (Manager) tạo hoặc giao một Task
+// cho nhân viên (assignee), bao gồm luồng UI → API → Controller → Firebase và
+// tùy chọn ghi notification cho assignee.
+//
+// 1. Actors / Components:
+//  - Manager (người thao tác trên UI)
+//  - ProjectDetailDialog (UI Swing) — form tạo task và dropdown assignee
+//  - ApiClient (desktop) — adapter HTTP, gửi yêu cầu đến backend
+//  - TaskController (backend Spring) — endpoint /api/v1/tasks
+//  - Firebase RTDB — lưu task và notification nodes
+//
+// 2. Tiền điều kiện:
+//  - Manager đã đăng nhập và có quyền tạo task trên project
+//  - Danh sách employees đã được nạp vào dropdown (API /users?role=EMPLOYEE)
+//
+// 3. Luồng chi tiết:
+//  - Bước 1 (UI build): ProjectDetailDialog hiển thị form; dropdown assignee
+//    được nạp bằng gọi API /users (được lọc role==EMPLOYEE).
+//  - Bước 2 (Submit): Manager điền thông tin, chọn assignee và submit form.
+//    UI gọi ApiClient POST /api/v1/tasks với payload {projectId, title, assignedUserId}.
+//  - Bước 3 (Backend): TaskController nhận request, validate (project exists, assignee valid),
+//    rồi gọi TaskService.createTask() để viết node /tasks/{id} trong Firebase.
+//  - Bước 4 (Notifications): TaskService có thể tạo node /users/{assigneeId}/notifications
+//    hoặc chung /notifications/{userId} để thông báo cho người được giao.
+//  - Bước 5 (Response): Controller trả 201 và body task; UI hiển thị success và cập nhật view.
+//
+// 4. Mapping code:
+//  - UI load employees: src/main/java/com/techforge/desktop/AssignTaskDialog.java (loadEmployeesImmediately)
+//  - Controller: src/main/java/com/techforge/erp/controller/TaskController.java
+//  - Service: src/main/java/com/techforge/erp/service/TaskService.java (create/update)
+//
+// 5. Hardening:
+//  - Validate assignedUserId exists and has role EMPLOYEE before persisting.
+//  - Use transaction semantics where necessary or server-side checks to prevent race conditions.
+//  - Emit notification events in a separate audit/queue node to ensure eventual delivery.
+//
+// 6. Postconditions:
+//  - Task node exists in /tasks with assignedUserId set.
+//  - Assignee receives a notification entry (or realtime UI update) indicating a new assignment.
+//
+// ==========================================================

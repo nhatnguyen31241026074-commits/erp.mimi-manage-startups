@@ -80,7 +80,7 @@ public class LoginFrame extends JFrame {
         logoPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // Dragon icon using emoji that renders properly
-        JLabel dragonIcon = new JLabel("\uD83D\uDC09"); // 🐉 Dragon emoji
+        JLabel dragonIcon = new JLabel("\uD83D\uDC09"); // Dragon emoji
         dragonIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 32));
         logoPanel.add(dragonIcon);
 

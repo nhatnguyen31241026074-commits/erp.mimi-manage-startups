@@ -26,7 +26,7 @@ public class FinanceService {
     private final DatabaseReference payrollsRef;
     private final DatabaseReference invoicesRef;
     private final DatabaseReference expensesRef;
-
+//Nguyên tắc Single Responsibility nên không gọi thẳng vào user/workload
     private final WorkLogService workLogService;
     private final UserService userService;
 
@@ -43,6 +43,16 @@ public class FinanceService {
     /**
      * Calculate payroll for a given user/month/year, save to LTUD10/payrolls and return the created Payroll.
      */
+    //1. Lấy TẤT CẢ worklogs
+    //2. Filter theo user + month + year
+    //3. Lấy User (để biết salaryType)
+    /**4. Tính:
+    *  - regular pay
+    *   - overtime pay
+    */
+    //5. Tạo Payroll object
+    //6. Save vào Firebase
+    //7. Complete future
     public CompletableFuture<Payroll> calculatePayroll(String userId, int month, int year) {
         CompletableFuture<Payroll> future = new CompletableFuture<>();
 
@@ -76,7 +86,7 @@ public class FinanceService {
 
                     double regularHours = wl.getRegularHours() == null ? 0.0 : wl.getRegularHours();
                     double overtimeHours = wl.getOvertimeHours() == null ? 0.0 : wl.getOvertimeHours();
-
+// get base salary snapshot from worklog
                     double baseSnapshot = wl.getBaseSalarySnapshot() == null ? 0.0 : wl.getBaseSalarySnapshot();
 
                     // determine hourly rate based on user's salaryType if available, else assume monthly
@@ -86,7 +96,7 @@ public class FinanceService {
                         hourlyRate = baseSnapshot; // snapshot already hourly rate
                     } else {
                         // default to monthly
-                        hourlyRate = baseSnapshot / 160.0;
+                        hourlyRate = baseSnapshot / 160.0; //Cho startup làm việc ngày sấp sĩ 5h thoii
                     }
 
                     double regPay = hourlyRate * regularHours;

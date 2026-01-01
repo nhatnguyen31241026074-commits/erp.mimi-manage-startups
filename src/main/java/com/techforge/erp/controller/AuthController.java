@@ -3,6 +3,8 @@ package com.techforge.erp.controller;
 import com.techforge.erp.model.User;
 import com.techforge.erp.service.EmailService;
 import com.techforge.erp.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "Endpoints for user registration, login and password reset")
 public class AuthController {
 
     // Secret codes for role assignment
@@ -35,6 +38,7 @@ public class AuthController {
      * Supports secret code for role assignment.
      */
     @PostMapping("/register")
+    @Operation(summary = "Register a new user")
     public CompletableFuture<ResponseEntity<Object>> register(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
@@ -117,6 +121,7 @@ public class AuthController {
      * POST /api/v1/auth/login
      */
     @PostMapping("/login")
+    @Operation(summary = "Login with email and password")
     public CompletableFuture<ResponseEntity<Object>> login(@RequestBody Map<String, String> credentials) {
         String email = credentials.get("email");
         String password = credentials.get("password");
@@ -150,6 +155,7 @@ public class AuthController {
      * PUT /api/v1/auth/profile
      */
     @PutMapping("/profile")
+    @Operation(summary = "Update user profile")
     public CompletableFuture<ResponseEntity<Object>> updateProfile(@RequestBody Map<String, Object> profileData) {
         String userId = (String) profileData.get("userId");
 
@@ -243,6 +249,7 @@ public class AuthController {
      * Body: {"userId": "...", "oldPassword": "...", "newPassword": "..."}
      */
     @PostMapping("/change-password")
+    @Operation(summary = "Change user password")
     public CompletableFuture<ResponseEntity<Object>> changePassword(@RequestBody Map<String, String> request) {
         String userId = request.get("userId");
         String oldPassword = request.get("oldPassword");
@@ -305,6 +312,7 @@ public class AuthController {
      * Body: {"email": "..."}
      */
     @PostMapping("/forgot-password")
+    @Operation(summary = "Send OTP to user email for password reset")
     public CompletableFuture<ResponseEntity<Object>> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
 
@@ -367,6 +375,7 @@ public class AuthController {
      * Body: {"email": "...", "otp": "...", "newPassword": "..."}
      */
     @PostMapping("/reset-password")
+    @Operation(summary = "Reset user password using OTP")
     public CompletableFuture<ResponseEntity<Object>> resetPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String otp = request.get("otp");
