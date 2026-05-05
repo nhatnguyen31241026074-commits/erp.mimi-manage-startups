@@ -1,62 +1,104 @@
 # TechForge ERP
-TechForge ERP — Hệ thống ERP nội bộ gồm Desktop Client (Java Swing) và Backend (Spring Boot) sử dụng Firebase Realtime Database.
 
-## Tóm tắt
-- Desktop client bằng Java Swing + FlatLaf.
-- Backend bằng Spring Boot (REST API).
-- Dữ liệu lưu trên Firebase Realtime Database (node `LTUD10`).
-- Tích hợp thanh toán MoMo (HMAC, idempotency) và AI (Gemini) cho gợi ý nghiệp vụ.
+Internal ERP-style system for **startup / SMB operations**: **Java Swing desktop client** + **Spring Boot REST API**, backed by **Firebase Realtime Database**. Includes **MoMo payment-style integration** (HMAC verification, idempotency mindset) and optional **Gemini**-assisted suggestions documented in `/docs`.
 
-## Tính năng chính
-- Quản lý User, Project, Task, WorkLog, Payroll, Invoice, Expense, Client.
-- Giao diện desktop native, phân quyền theo role (ADMIN / MANAGER / EMPLOYEE).
-- Luồng thanh toán an toàn: HMAC-SHA256, xác minh IPN, idempotency, audit log.
-- Tích hợp AI cho gợi ý phân công (non-authoritative) và Gap Analysis hỗ trợ kiểm thử.
-- Asynchronous processing: `CompletableFuture` (backend) và `SwingWorker` (frontend).
+---
 
-## Công nghệ
-- Java 21, Maven
-- Spring Boot 3.2.x (backend)
-- OkHttp + Gson (desktop client)
-- Jackson (server)
-- Firebase Admin SDK
-- Lombok (models)
-- AI tools: Google Gemini, Claude, GitHub Copilot (hỗ trợ phát triển)
+## Highlights
 
-## Cách chạy nhanh (local)
-1. Cài JDK 21, Maven.
-2. Thiết lập biến môi trường cần thiết (xem bên dưới).
-3. Backend:
-   - Build: `mvn -f backend/pom.xml clean package`
-   - Chạy: `java -jar backend/target/techforge-erp.jar`
-   - API base: `http://localhost:8080/api/v1`
-4. Desktop:
-   - Build: `mvn -f desktop/pom.xml clean package`
-   - Chạy: `java -jar desktop/target/techforge-desktop.jar`
+| Area | Detail |
+|------|--------|
+| **Architecture** | Single Maven module: `com.techforge` Spring Boot app + `com.techforge.desktop` Swing UI |
+| **Backend** | Spring Boot 3.2.x, Spring Security, WebSocket, Firebase Admin SDK, OpenAPI (Swagger UI) |
+| **Desktop** | FlatLaf, OkHttp + Gson client calling `http://localhost:8080/api/v1` |
+| **Data** | Firebase RTDB (see `docs/DATABASE_SCHEMA.sql` + Vietnamese specs in `docs/`) |
+| **Payments** | MoMo IPN path with HMAC, idempotency, audit-oriented notes in existing README sections |
 
-## Biến môi trường / Secrets (KHÔNG commit)
-- `FIREBASE_SERVICE_ACCOUNT_JSON` (path hoặc content)
-- `MOMO_SECRET_KEY`
-- `SMTP_USERNAME`, `SMTP_PASSWORD`
-- Các biến cấu hình khác theo `application.properties` (inject via env/secret manager)
+---
 
-## Ghi chú bảo mật quan trọng
-- Client phải gửi Firebase ID Token bằng header `Authorization: Bearer <idToken>`. Backend phải verify token bằng Firebase Admin SDK và chỉ sau đó mới tin `X-Requester-ID`. Tuyệt đối không tin `X-Requester-ID` nếu không có token đã xác thực.
-- Không lưu mật khẩu plaintext; dùng hashing.
-- OTP: sinh bằng `SecureRandom`, lưu dưới dạng hash, TTL ngắn, single-use.
-- MoMo IPN: luôn verify HMAC, áp dụng idempotency và audit logging.
-- Không commit secrets hoặc cấu hình nhạy cảm vào repo.
+## Documentation (read this first)
 
-## Kiểm thử & CI
-- Chạy unit tests: `mvn test`
-- Mọi thay đổi phải có test tương ứng và review trước khi merge.
-- CI phải chạy test + static analysis.
+The repo ships substantial **product/technical specs** under [`docs/`](docs/):
+
+- [`DOCS_CAU_HINH_VA_KIEN_TRUC.md`](docs/DOCS_CAU_HINH_VA_KIEN_TRUC.md) — configuration & architecture  
+- [`DOCS_API_VA_LOGIC_NGHIEP_VU.md`](docs/DOCS_API_VA_LOGIC_NGHIEP_VU.md) — APIs & business logic  
+- [`DATABASE_SCHEMA.sql`](docs/DATABASE_SCHEMA.sql) — schema reference  
+- [`USE_CASE_SPECIFICATION.md`](docs/USE_CASE_SPECIFICATION.md), [`TEST_CASES.md`](docs/TEST_CASES.md) — QA-oriented artifacts  
+- [`plantuml/`](docs/plantuml/) — sequence diagrams (login, payroll/payment, projects, tasks)
+
+---
+
+## Prerequisites
+
+- **JDK 21**
+- **Maven 3.9+**
+- Firebase service account (not committed)
+- MoMo / SMTP secrets as per your environment (not committed)
+
+---
+
+## Run locally
+
+### 1) API server (Spring Boot)
+
+From the **repository root** (where `pom.xml` lives):
+
+```bash
+mvn spring-boot:run
+```
+
+API base URL (default): `http://localhost:8080/api/v1`  
+Swagger UI (when enabled): `http://localhost:8080/swagger-ui.html` (path may vary by Springdoc config).
+
+Alternative:
+
+```bash
+mvn clean package -DskipTests
+java -jar target/erp-0.0.1-SNAPSHOT.jar
+```
+
+(JAR name follows `artifactId` + `version` in `pom.xml`.)
+
+### 2) Desktop client (Swing)
+
+The desktop entry point is `com.techforge.desktop.DesktopLauncher`.
+
+**Recommended:** run `DesktopLauncher` from your IDE (IntelliJ / VS Code Java) with **classpath = Maven project**.
+
+The UI expects the backend to be up (`DesktopLauncher` prints the API URL on start).
+
+> **Important:** This repo uses **one** `pom.xml` at the root. Earlier docs referencing separate `backend/pom.xml` / `desktop/pom.xml` paths were inaccurate for this layout.
+
+---
+
+## Security notes (non-negotiable)
+
+- Authenticate with **Firebase ID Token** via `Authorization: Bearer <token>`; verify server-side with Firebase Admin SDK.  
+- Do **not** trust `X-Requester-ID` (or similar) without a verified token.  
+- Passwords: hashed only; OTP: secure random, hashed at rest, short TTL, single-use.  
+- MoMo IPN: verify HMAC, enforce idempotency, persist audit trails.  
+- Never commit secrets—use env vars or a secret manager.
+
+---
+
+## Testing & CI
+
+```bash
+mvn test
+```
+
+Align CI with: unit tests, static analysis, and secret scanning on PRs.
+
+---
 
 ## Contributing
-- Tuân thủ kiến trúc phân lớp (Controller → Service → Model).
-- Viết unit tests cho logic nghiệp vụ.
-- Không commit secrets; dùng branch, PR và code review.
+
+- Layering: Controller → Service → persistence adapters / models.  
+- Add tests for business rules (payroll, payments, permissions).  
+- PRs should reference updated docs under `docs/` when behavior changes.
+
+---
 
 ## License
-- Thêm thông tin license tại `README.md` (ví dụ MIT) hoặc file `LICENSE`.
 
+Add a `LICENSE` file (e.g. MIT or proprietary) according to your organization.
