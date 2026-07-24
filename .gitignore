@@ -56,3 +56,12 @@ target/
 *.jar
 *.exe
 .idea/
+# --- build artifacts / IDE / secrets (added during cleanup) ---
+target/
+*.iml
+.idea/
+mvn_out.txt
+mvn_err.txt
+payload.json
+application.properties
+serviceAccountKey.json
